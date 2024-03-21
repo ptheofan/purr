@@ -31,7 +31,7 @@ jobs:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
     - run: npm ci
-    - run: npm run test
+    - run: npm -w backend run test
 
   lint:
     name: Linter
@@ -49,4 +49,4 @@ jobs:
         with:
           node-version: '20.x'
       - run: npm ci
-      - run: npm run lint --if-present
+      - run: npm -w backend run lint --if-present
