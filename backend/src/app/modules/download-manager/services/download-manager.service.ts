@@ -10,12 +10,16 @@ import { PutioService } from '../../putio';
 import { RuntimeException } from '@nestjs/core/errors/exceptions';
 import * as path from 'path';
 
-export interface DownloadManagerSettings {
+export interface IDownloadManagerSettings {
   concurrentLargeFiles?: number;
   concurrentSmallFiles?: number;
   concurrentGroups?: number;
   smallFileThreshold?: number;
 }
+
+export type TAddVolumeResponse = {
+  success: boolean;
+} & ({ success: true; groups: number; items: number } | { success: false; message: string });
 
 const startMutex = new Mutex();
 
@@ -34,14 +38,14 @@ export class DownloadManagerService {
     private readonly putioService: PutioService,
   ) {}
 
-  setSettings(settings: DownloadManagerSettings) {
+  setSettings(settings: IDownloadManagerSettings) {
     this.concurrentLargeFiles = settings.concurrentLargeFiles === undefined ? this.concurrentLargeFiles : settings.concurrentLargeFiles;
     this.concurrentSmallFiles = settings.concurrentSmallFiles === undefined ? this.concurrentSmallFiles : settings.concurrentSmallFiles;
     this.concurrentGroups = settings.concurrentGroups === undefined ? this.concurrentGroups : settings.concurrentGroups;
     this.smallFileThreshold = settings.smallFileThreshold === undefined ? this.smallFileThreshold : settings.smallFileThreshold;
   }
 
-  getSettings(): DownloadManagerSettings {
+  getSettings(): IDownloadManagerSettings {
     return {
       concurrentLargeFiles: this.concurrentLargeFiles,
       concurrentSmallFiles: this.concurrentSmallFiles,
@@ -54,14 +58,25 @@ export class DownloadManagerService {
    * Add a Volume to the download manager.
    * You need to call start() to start the download queue.
    */
-  async addVolume(volume: Volume, saveAt: string) {
+  async addVolume(volume: Volume, saveAt: string): Promise<TAddVolumeResponse> {
     const files = volume.readdirSync('/', { recursive: true });
     if (files.length === 0) {
-      return;
+      return {
+        success: true,
+        groups: 0,
+        items: 0,
+      }
     }
 
     const group = new Group();
     const firstNodeMeta = await getMeta(await getFirstFileOrFolder(volume), volume);
+    if (await this.groupsRepo.find((group) => group.id === firstNodeMeta.id)) {
+      // Group already exists
+      return {
+        success: false,
+        message: 'Group already exists.',
+      };
+    }
     group.id = firstNodeMeta.id;
     group.name = firstNodeMeta.name;
     group.saveAt = saveAt;
@@ -93,9 +108,14 @@ export class DownloadManagerService {
     // Sort the items by size, smaller files first
     items.sort((a, b) => a.size - b.size);
 
-    // Add the items to the repository
-    for (const item of items) {
-      await this.itemsRepo.add(item);
+    // ensure all items are unique in the repo
+    const uniqueItems = items.filter((item, index, self) => self.findIndex((i) => i.id === item.id) === index);
+    await this.itemsRepo.addMany(uniqueItems);
+
+    return {
+      success: true,
+      groups: 1,
+      items: uniqueItems.length,
     }
   }
 
@@ -118,7 +138,7 @@ export class DownloadManagerService {
 
     const pendingGroups = await this.groupsRepo.filter(group => group.status === DownloadStatus.Pending);
     const rVal = downloadingGroups;
-    const pendingGroupsToAdd = this.concurrentGroups - downloadingGroups.length;
+    const pendingGroupsToAdd = Math.min(this.concurrentGroups - downloadingGroups.length, pendingGroups.length);
     for (let i = 0; i < pendingGroupsToAdd; i++) {
       rVal.push(pendingGroups[i]);
     }

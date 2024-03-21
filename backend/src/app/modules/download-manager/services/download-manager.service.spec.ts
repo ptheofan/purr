@@ -108,7 +108,8 @@ describe('DownloadManagerService', () => {
         }
       });
 
-      await service.addVolume(volume, '/save/here');
+      const result = await service.addVolume(volume, '/save/here');
+      expect(result).toMatchObject({ groups: 1, items: 1 });
       const group = await groupsRepo.getAll();
       expect(group).toEqual([{
         id: 1,
@@ -136,7 +137,8 @@ describe('DownloadManagerService', () => {
         'file1.txt': JSON.stringify({ id: 1, name: 'file1.txt', size: 100, crc32: '123456', downloadLink: 'http://example.com/file1.txt' }),
       });
 
-      await service.addVolume(volume, '/save/here');
+      const result = await service.addVolume(volume, '/save/here');
+      expect(result).toMatchObject({ groups: 1, items: 1 });
       const group = await groupsRepo.getAll();
       expect(group).toEqual([{
         id: 1,
@@ -159,9 +161,42 @@ describe('DownloadManagerService', () => {
       ]);
     });
 
+    it('should not allow duplicate files', async () => {
+      const { vol: volume } = memfs({
+        'file1.txt': JSON.stringify({ id: 1, name: 'file1.txt', size: 100, crc32: '123456', downloadLink: 'http://example.com/file1.txt' }),
+      });
+
+      const result = await service.addVolume(volume, '/save/here');
+      expect(result).toMatchObject({ groups: 1, items: 1 });
+      const group = await groupsRepo.getAll();
+      expect(group).toEqual([{
+        id: 1,
+        name: 'file1.txt',
+        saveAt: '/save/here',
+        status: DownloadStatus.Pending
+      }]);
+      const items = await itemsRepo.getAll();
+      expect(items).toEqual([
+        {
+          id: 1,
+          name: 'file1.txt',
+          groupId: 1,
+          size: 100,
+          crc32: '123456',
+          relativePath: '/',
+          downloadLink: 'http://example.com/file1.txt',
+          status: DownloadStatus.Pending
+        }
+      ]);
+
+      const result2 = await service.addVolume(volume, '/save/here');
+      expect(result2).toMatchObject({ success: false });
+    });
+
     it('should not add items if the volume is empty', async () => {
       const volume = new Volume();
-      await service.addVolume(volume, '/save/here');
+      const result = await service.addVolume(volume, '/save/here');
+      expect(result).toMatchObject({ groups: 0, items: 0 });
       const group = await groupsRepo.getAll();
       expect(group).toEqual([]);
       const items = await itemsRepo.getAll();

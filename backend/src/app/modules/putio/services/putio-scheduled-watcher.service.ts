@@ -18,14 +18,12 @@ export class PutioScheduledWatcherService {
 
   async configureCronJobs() {
     if (!this.config.putioCheckCronSchedule) {
-      this.schedulerRegistry.getCronJob('putio.check-targets-for-downloads')?.stop();
+      this.job && this.job.stop();
       return;
     }
 
     if (this.job) {
-      this.job.stop();
       this.job.setTime(new CronTime(this.config.putioCheckCronSchedule));
-      this.job.start();
       return;
     }
 

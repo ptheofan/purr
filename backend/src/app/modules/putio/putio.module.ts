@@ -59,8 +59,9 @@ export class PutioModule implements OnModuleInit {
       }
       await this.cronService.configureCronJobs();
 
-      // On app start-up always run a first scan to download
-      // any pending items
-      await this.onDemandScannerService.checkTargetsForDownloads();
+      // Scan targets for items on app start-up?
+      if (this.config.putioCheckAtStartup) {
+        await this.onDemandScannerService.checkTargetsForDownloads();
+      }
     }
 }

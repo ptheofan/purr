@@ -60,3 +60,11 @@ on your local machine like this
 ```dotenv
 DOWNLOADERS=/my/downloads:123;/my/downloads:456
 ```
+
+
+# Development
+This is a basic monorepo using npm workspaces. To execute namespace command use the following syntax
+```shell
+# Launch the backend in development mode
+npm run -w backend start:dev
+```

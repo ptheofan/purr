@@ -20,7 +20,7 @@ export const EnvKeys = {
   PUTIO_ENABLE_SOCKET: 'PUTIO_ENABLE_SOCKET',
   PUTIO_ENABLE_WEBHOOKS: 'PUTIO_ENABLE_WEBHOOKS',
   PUTIO_CHECK_CRON_SCHEDULE: 'PUTIO_CHECK_CRON_SCHEDULE',
-  JSON_CONFIG: 'JSON_CONFIG',
+  PUTIO_CHECK_AT_STARTUP: 'PUTIO_CHECK_AT_STARTUP',
 }
 
 @Injectable()
@@ -35,9 +35,9 @@ export class AppConfigService {
   private _putioWatcherSocket?: boolean;
   private _putioWebhooksEnabled?: boolean;
   private _putioCheckCronSchedule?: string;
+  private _putioCheckAtStartup: boolean;
   private _downloaderEnabled?: boolean;
   private _downloaderTargets?: Target[];
-  private _jsonConfig?: string;
 
   constructor(
     private readonly configService: ConfigService,
@@ -46,8 +46,8 @@ export class AppConfigService {
   }
 
   private loadEnvConfig() {
-    this._port = this.loadEnvInt(EnvKeys.PORT, 80);
-    this._host = this.loadEnvString(EnvKeys.HOST, 'localhost');
+    this._port = this.loadEnvInt(EnvKeys.PORT, 3000);
+    this._host = this.loadEnvString(EnvKeys.HOST, 'http://localhost');
     this._putioAuth = this.loadEnvString(EnvKeys.PUTIO_AUTH);
     this._putioClientId = this.loadEnvInt(EnvKeys.PUTIO_CLIENT_ID);
     this._putioClientSecret = this.loadEnvString(EnvKeys.PUTIO_CLIENT_SECRET);
@@ -55,10 +55,13 @@ export class AppConfigService {
     this._watcherTargets = this.loadEnvTargets(EnvKeys.WATCHER_TARGETS);
     this._downloaderEnabled = this.loadEnvBoolean(EnvKeys.DOWNLOADER_ENABLED, true);
     this._downloaderTargets = this.loadEnvTargets(EnvKeys.DOWNLOADER_TARGETS);
-    this._jsonConfig = this.loadEnvString(EnvKeys.JSON_CONFIG);
     this._putioWatcherSocket = this.loadEnvBoolean(EnvKeys.PUTIO_ENABLE_SOCKET, true);
-    this._putioWebhooksEnabled = this.loadEnvBoolean(EnvKeys.PUTIO_ENABLE_WEBHOOKS, true);
-    this._putioCheckCronSchedule = this.loadEnvString(EnvKeys.PUTIO_CHECK_CRON_SCHEDULE, undefined);
+    this._putioWebhooksEnabled = this.loadEnvBoolean(EnvKeys.PUTIO_ENABLE_WEBHOOKS, false);
+    this._putioCheckCronSchedule = this.loadEnvString(EnvKeys.PUTIO_CHECK_CRON_SCHEDULE, '*/60 * * * * *');
+    if (this._putioCheckCronSchedule.toLowerCase().trim() === 'false') {
+      this._putioCheckCronSchedule = undefined;
+    }
+    this._putioCheckAtStartup = this.loadEnvBoolean(EnvKeys.PUTIO_CHECK_AT_STARTUP, true);
   }
 
   private loadEnvInt(name: string, defaultValue?: number): number {
@@ -164,12 +167,20 @@ export class AppConfigService {
     this._putioWebhooksEnabled = value;
   }
 
-  get putioCheckCronSchedule(): string {
+  get putioCheckCronSchedule(): string | undefined {
     return this._putioCheckCronSchedule;
   }
 
-  set putioCheckCronSchedule(value: string) {
+  set putioCheckCronSchedule(value: string | undefined) {
     this._putioCheckCronSchedule = value;
+  }
+
+  get putioCheckAtStartup(): boolean {
+    return this._putioCheckAtStartup;
+  }
+
+  set putioCheckAtStartup(value: boolean) {
+    this._putioCheckAtStartup = value;
   }
 
   get downloaderEnabled(): boolean {
@@ -186,13 +197,5 @@ export class AppConfigService {
 
   set downloaderTargets(value: Target[]) {
     this._downloaderTargets = value;
-  }
-
-  get jsonConfig(): string {
-    return this._jsonConfig;
-  }
-
-  set jsonConfig(value: string) {
-    this._jsonConfig = value;
   }
 }
