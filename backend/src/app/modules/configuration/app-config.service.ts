@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { parseInt } from 'lodash';
+import fs from 'fs';
+import { RuntimeException } from '@nestjs/core/errors/exceptions';
 
 export type Target = {
   path: string;
@@ -77,6 +79,18 @@ export class AppConfigService {
     this._concurrentGroups = this.loadEnvInt(EnvKeys.CONCURRENT_GROUPS, 2);
     this._concurrentSmallFiles = this.loadEnvInt(EnvKeys.CONCURRENT_SMALL_FILES, 8);
     this._concurrentLargeFiles = this.loadEnvInt(EnvKeys.CONCURRENT_LARGE_FILES, 2);
+
+    // Validate Targets
+    this._watcherTargets.forEach((target) => {
+      if (!fs.existsSync(target.path)) {
+        throw new RuntimeException(`Watcher target path does not exist: ${target.path}`);
+      }
+    });
+    this._downloaderTargets.forEach((target) => {
+      if (!fs.existsSync(target.path)) {
+        throw new RuntimeException(`Downloader target path does not exist: ${target.path}`);
+      }
+    });
   }
 
   private loadEnvInt(name: string, defaultValue?: number): number {
