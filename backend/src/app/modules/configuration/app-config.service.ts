@@ -17,10 +17,15 @@ export const EnvKeys = {
   WATCHER_TARGETS: 'WATCHER_TARGETS',
   DOWNLOADER_ENABLED: 'DOWNLOADER_ENABLED',
   DOWNLOADER_TARGETS: 'DOWNLOADER_TARGETS',
+  DOWNLOADER_CHUNK_SIZE: 'DOWNLOADER_CHUNK_SIZE',
+  CONCURRENT_GROUPS: 'CONCURRENT_GROUPS',
+  CONCURRENT_SMALL_FILES: 'CONCURRENT_SMALL_FILES',
+  CONCURRENT_LARGE_FILES: 'CONCURRENT_LARGE_FILES',
   PUTIO_ENABLE_SOCKET: 'PUTIO_ENABLE_SOCKET',
   PUTIO_ENABLE_WEBHOOKS: 'PUTIO_ENABLE_WEBHOOKS',
   PUTIO_CHECK_CRON_SCHEDULE: 'PUTIO_CHECK_CRON_SCHEDULE',
   PUTIO_CHECK_AT_STARTUP: 'PUTIO_CHECK_AT_STARTUP',
+  UI_PROGRESS_UPDATE_INTERVAL: 'UI_PROGRESS_UPDATE_INTERVAL',
 }
 
 @Injectable()
@@ -38,6 +43,11 @@ export class AppConfigService {
   private _putioCheckAtStartup: boolean;
   private _downloaderEnabled?: boolean;
   private _downloaderTargets?: Target[];
+  private _downloaderChunkSize: number;
+  private _uiProgressUpdateInterval: number;
+  private _concurrentGroups: number;
+  private _concurrentSmallFiles: number;
+  private _concurrentLargeFiles: number;
 
   constructor(
     private readonly configService: ConfigService,
@@ -55,6 +65,7 @@ export class AppConfigService {
     this._watcherTargets = this.loadEnvTargets(EnvKeys.WATCHER_TARGETS);
     this._downloaderEnabled = this.loadEnvBoolean(EnvKeys.DOWNLOADER_ENABLED, true);
     this._downloaderTargets = this.loadEnvTargets(EnvKeys.DOWNLOADER_TARGETS);
+    this._downloaderChunkSize = this.loadEnvInt(EnvKeys.DOWNLOADER_CHUNK_SIZE, 1024 * 1024 * 8);
     this._putioWatcherSocket = this.loadEnvBoolean(EnvKeys.PUTIO_ENABLE_SOCKET, true);
     this._putioWebhooksEnabled = this.loadEnvBoolean(EnvKeys.PUTIO_ENABLE_WEBHOOKS, false);
     this._putioCheckCronSchedule = this.loadEnvString(EnvKeys.PUTIO_CHECK_CRON_SCHEDULE, '*/60 * * * * *');
@@ -62,6 +73,10 @@ export class AppConfigService {
       this._putioCheckCronSchedule = undefined;
     }
     this._putioCheckAtStartup = this.loadEnvBoolean(EnvKeys.PUTIO_CHECK_AT_STARTUP, true);
+    this._uiProgressUpdateInterval = this.loadEnvInt(EnvKeys.UI_PROGRESS_UPDATE_INTERVAL, 333);
+    this._concurrentGroups = this.loadEnvInt(EnvKeys.CONCURRENT_GROUPS, 2);
+    this._concurrentSmallFiles = this.loadEnvInt(EnvKeys.CONCURRENT_SMALL_FILES, 8);
+    this._concurrentLargeFiles = this.loadEnvInt(EnvKeys.CONCURRENT_LARGE_FILES, 2);
   }
 
   private loadEnvInt(name: string, defaultValue?: number): number {
@@ -197,5 +212,45 @@ export class AppConfigService {
 
   set downloaderTargets(value: Target[]) {
     this._downloaderTargets = value;
+  }
+
+  get downloaderChunkSize(): number {
+    return this._downloaderChunkSize;
+  }
+
+  set downloaderChunkSize(value: number) {
+    this._downloaderChunkSize = value;
+  }
+
+  get uiProgressUpdateInterval(): number {
+    return this._uiProgressUpdateInterval;
+  }
+
+  set uiProgressUpdateInterval(value: number) {
+    this._uiProgressUpdateInterval = value;
+  }
+
+  get concurrentGroups(): number {
+    return this._concurrentGroups;
+  }
+
+  set concurrentGroups(value: number) {
+    this._concurrentGroups = value;
+  }
+
+  get concurrentSmallFiles(): number {
+    return this._concurrentSmallFiles;
+  }
+
+  set concurrentSmallFiles(value: number) {
+    this._concurrentSmallFiles = value;
+  }
+
+  get concurrentLargeFiles(): number {
+    return this._concurrentLargeFiles;
+  }
+
+  set concurrentLargeFiles(value: number) {
+    this._concurrentLargeFiles = value;
   }
 }

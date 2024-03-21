@@ -9,6 +9,7 @@ import { Mutex } from 'async-mutex';
 import { PutioService } from '../../putio';
 import { RuntimeException } from '@nestjs/core/errors/exceptions';
 import * as path from 'path';
+import { AppConfigService } from '../../configuration';
 
 export interface IDownloadManagerSettings {
   concurrentLargeFiles?: number;
@@ -26,17 +27,22 @@ const startMutex = new Mutex();
 @Injectable()
 export class DownloadManagerService {
   private readonly logger = new Logger(DownloadManagerService.name);
-  private concurrentLargeFiles = 2;
-  private concurrentSmallFiles = 8;
-  private concurrentGroups = 2;
-  private smallFileThreshold = 1024 * 1024 * 10; // 10MB
+  private concurrentLargeFiles: number;
+  private concurrentSmallFiles: number;
+  private concurrentGroups: number;
+  private smallFileThreshold: number = 1024 * 1024 * 10; // 10MB
 
   constructor(
     private readonly groupsRepo: DownloadGroupsRepository,
     private readonly itemsRepo: DownloadItemsRepository,
     private readonly downloaderFactory: DownloaderFactory,
     private readonly putioService: PutioService,
-  ) {}
+    private readonly appConfig: AppConfigService,
+  ) {
+    this.concurrentGroups = appConfig.concurrentGroups;
+    this.concurrentSmallFiles = appConfig.concurrentSmallFiles;
+    this.concurrentLargeFiles = appConfig.concurrentLargeFiles;
+  }
 
   setSettings(settings: IDownloadManagerSettings) {
     this.concurrentLargeFiles = settings.concurrentLargeFiles === undefined ? this.concurrentLargeFiles : settings.concurrentLargeFiles;
@@ -254,11 +260,12 @@ export class DownloadManagerService {
         sourceObject: item,
         url: item.downloadLink,
         saveAs: saveAs,
-        progressUpdateInterval: 1000,
+        progressUpdateInterval: this.appConfig.uiProgressUpdateInterval,
         debugOutput: true,
         disableLogging: false,
         workersCount: item.size <= this.smallFileThreshold ? 1 : 4,
         fileSize: item.size,
+        chunkSize: this.appConfig.downloaderChunkSize,
       });
 
       downloader.start()
