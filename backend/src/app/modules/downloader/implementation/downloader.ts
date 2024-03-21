@@ -1,7 +1,7 @@
 import { Logger } from '@nestjs/common';
 import { FragmentStatus } from '../dtos';
 import { Ranges } from './ranges';
-import axios, { AxiosRequestConfig, CanceledError, CancelTokenSource, ResponseType } from 'axios';
+import axios, { AxiosError, AxiosRequestConfig, CanceledError, CancelTokenSource, ResponseType } from 'axios';
 import * as http from 'http';
 import * as https from 'https';
 import { strict as assert } from 'assert';
@@ -193,9 +193,21 @@ export class Downloader<T> implements IDownloader {
     const saveAsDir = path.dirname(this.saveAs);
     await fsp.mkdir(saveAsDir, { recursive: true });
 
+    // Tune the workers count based on the file size
+    let workersCount: number;
+    if (!this.serverSupportsRanges) {
+      // Ranges not supported
+      workersCount = 1;
+    } else if (this.fileSize && this.fileSize < this.chunkSize) {
+      workersCount = 1;
+    } else {
+      // unknown size or size > chunkSize
+      workersCount = this.workersCount;
+    }
+
     // Configure Workers
     const workers: Promise<void>[] = [];
-    for (let i = 0; i < this.workersCount; i++) {
+    for (let i = 0; i < workersCount; i++) {
       const id = `worker-${i}`;
       // Initialize worker stats
       this.workerStats.set(id, {
@@ -218,10 +230,21 @@ export class Downloader<T> implements IDownloader {
       if (this.logger && this.debugOutput) this.logger.debug('All workers completed');
       this.completedHandler();
     } catch (err) {
-      if (!(err instanceof CanceledError)) {
-        if (this.logger && this.debugOutput) this.logger.debug(`Error while running workers (${err.message})`, err.trace);
-        this.errorHandler(err);
+      if (err instanceof CanceledError) {
+        this.status = DownloaderStatus.PAUSED;
+        return;
       }
+
+      if (err instanceof AxiosError) {
+        if (err.response.status === 416) {
+          // Range not satisfiable - unknown size, download completed
+          this.completedHandler();
+          return;
+        }
+      }
+
+      if (this.logger && this.debugOutput) this.logger.debug(`Error while running workers (${err.message})`, err.trace);
+      this.errorHandler(err);
     }
   }
 

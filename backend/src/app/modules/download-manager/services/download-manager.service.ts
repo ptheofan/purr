@@ -258,6 +258,7 @@ export class DownloadManagerService {
         debugOutput: true,
         disableLogging: false,
         workersCount: item.size <= this.smallFileThreshold ? 1 : 4,
+        fileSize: item.size,
       });
 
       downloader.start()
