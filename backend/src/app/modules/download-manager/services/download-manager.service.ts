@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Volume } from 'memfs/lib/volume';
 import { DownloadGroupsRepository, DownloadItemsRepository } from '../repositories';
-import { getFirstFileOrFolder, getMeta } from '../../../helpers';
+import { crc32File, getFirstFileOrFolder, getMeta } from '../../../helpers';
 import { Group, Item } from '../entities';
 import { DownloadStatus } from '../enums';
 import { Downloader, DownloaderFactory } from '../../downloader';
@@ -9,6 +9,7 @@ import { Mutex } from 'async-mutex';
 import { PutioService } from '../../putio';
 import { RuntimeException } from '@nestjs/core/errors/exceptions';
 import * as path from 'path';
+import * as fs from 'fs';
 import { AppConfigService } from '../../configuration';
 
 export interface IDownloadManagerSettings {
@@ -71,7 +72,7 @@ export class DownloadManagerService {
         success: true,
         groups: 0,
         items: 0,
-      }
+      };
     }
 
     const group = new Group();
@@ -118,10 +119,40 @@ export class DownloadManagerService {
     const uniqueItems = items.filter((item, index, self) => self.findIndex((i) => i.id === item.id) === index);
     await this.itemsRepo.addMany(uniqueItems);
 
+    // Check if the items are already downloaded and update them accordingly
+    await this.checkGroupItemsOnDisk(group.id);
+
     return {
       success: true,
       groups: 1,
       items: uniqueItems.length,
+    };
+  }
+
+  /**
+   * Check if the items of a group already exist on the disk
+   * If they do verify (CRC32) they are correct and mark them as completed
+   * If they do not exist, mark them as pending
+   * If they exist but the CRC32 does not match, mark them as pending and delete the local files
+   */
+  async checkGroupItemsOnDisk(groupId: number) {
+    const group = await this.groupsRepo.find((group) => group.id === groupId);
+    const items = await this.itemsRepo.filter((item) => item.groupId === groupId);
+    for (const item of items) {
+      const saveAs = await this.computeDownloadSavePath(item, group);
+      // if saveAs exists in local fs verify CRC32
+      if (fs.existsSync(saveAs)) {
+        const crc32 = await crc32File(saveAs);
+        if (crc32 !== item.crc32) {
+          // If the file exists but the CRC32 does not match, mark the item as pending
+          await this.itemsRepo.update(item.id, { status: DownloadStatus.Pending });
+          // remove the file
+          fs.unlinkSync(saveAs);
+        } else {
+          // If the file exists and the CRC32 matches, mark the item as completed
+          await this.itemsRepo.update(item.id, { status: DownloadStatus.Completed });
+        }
+      }
     }
   }
 
@@ -131,6 +162,7 @@ export class DownloadManagerService {
 
   /**
    * Determine which groups are eligible for download and return them
+   * Utilize the concurrency settings to determine which groups can be downloaded
    */
   async getDownloadGroupCandidates(): Promise<Group[]> {
     if (this.concurrentGroups < 1) {
@@ -151,7 +183,10 @@ export class DownloadManagerService {
     return rVal;
   }
 
-
+  /**
+   * Determine which items are eligible for download and return them
+   * Utilize the concurrency settings to determine which items can be downloaded
+   */
   async getDownloadItemCandidates(groups: Group[]): Promise<Item[]> {
     const downloadingItemsCounters = (await this.itemsRepo.getAll()).reduce((acc, item) => {
       if (item.status === DownloadStatus.Downloading) {
@@ -264,6 +299,9 @@ export class DownloadManagerService {
         fileSize: item.size,
         chunkSize: this.appConfig.downloaderChunkSize,
         autoRestartCallback: this.downloadAutoRestartCallback.bind(this),
+        progressCallback: undefined,
+        completedCallback: undefined,
+        errorCallback: undefined,
       });
 
       downloader.start()
@@ -283,7 +321,10 @@ export class DownloadManagerService {
         });
     } catch (error) {
       this.logger.error(error);
-      await this.itemsRepo.update(item.id, { status: DownloadStatus.Error, error: error instanceof Error ? error.message : error as string });
+      await this.itemsRepo.update(item.id, {
+        status: DownloadStatus.Error,
+        error: error instanceof Error ? error.message : error as string
+      });
       await this.start();
     }
   }
@@ -319,7 +360,7 @@ export class DownloadManagerService {
       return false;
     }
 
-    const timeElapsedThreshold = 1000 * this.appConfig.downloaderPerformanceMonitoringTime
+    const timeElapsedThreshold = 1000 * this.appConfig.downloaderPerformanceMonitoringTime;
 
     // Time elapsed since last workers restart in ms
     const timeElapsed = Date.now() - downloader.getStats().workersRestartedAt.getTime();
@@ -338,5 +379,12 @@ export class DownloadManagerService {
     }
 
     return false;
+  }
+
+  async completedCallback(downloader: Downloader<Item>) {
+    // CRC32 check
+
+    // Delete the file from put.io
+    await this.putioService.deleteFile(downloader.sourceObject.id);
   }
 }
