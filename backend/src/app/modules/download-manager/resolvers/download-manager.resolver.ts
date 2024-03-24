@@ -1,10 +1,15 @@
-import { Args, Int, Mutation, Resolver } from '@nestjs/graphql';
+import { Args, Int, Mutation, Resolver, Subscription } from '@nestjs/graphql';
 import { DownloadManagerService } from '../services';
 import { PutioService } from '../../putio';
 import { DownloadGroupsRepository } from '../repositories';
 import { CreatePutioDownloadResultDto } from '../dtos';
 import { AppConfigService } from '../../configuration';
-import { restrictFolderToRoot } from '../../../helpers';
+import { PUB_SUB, restrictFolderToRoot } from '../../../helpers';
+import { TriggerService } from '../../subscriptions/services';
+import { Triggers } from '../../subscriptions/enums';
+import { Inject } from '@nestjs/common';
+import { PubSub } from 'graphql-subscriptions';
+import { GroupStateChangedDto } from '../../subscriptions/dtos';
 
 @Resolver()
 export class DownloadManagerResolver {
@@ -13,6 +18,8 @@ export class DownloadManagerResolver {
     private readonly putioService: PutioService,
     private readonly downloadManagerService: DownloadManagerService,
     private readonly groupRepo: DownloadGroupsRepository,
+    private readonly triggers: TriggerService,
+    @Inject(PUB_SUB) private readonly pubSub: PubSub,
   ) {
   }
 
@@ -50,7 +57,14 @@ export class DownloadManagerResolver {
 
     if (result.items > 0) {
       analysisCompletedPromise.then(async () => {
-        await this.downloadManagerService.start();
+        const updatedGroup = await this.groupRepo.find(g => g.id === putioId);
+        if (updatedGroup.state !== group.state) {
+          await this.triggers.groupStateChanged({
+            id: updatedGroup.id,
+            state: updatedGroup.state
+          });
+          await this.downloadManagerService.start();
+        }
       });
     }
 
@@ -59,5 +73,10 @@ export class DownloadManagerResolver {
       success: true,
       group,
     };
+  }
+
+  @Subscription(() => GroupStateChangedDto)
+  groupStateChanged() {
+    return this.pubSub.asyncIterator(Triggers.groupStateChanged);
   }
 }

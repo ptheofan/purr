@@ -24,6 +24,6 @@ export class GroupModel {
   @Field(() => GroupState)
   state: GroupState;
 
-  @Field(() => [ItemModel])
+  @Field(() => [ItemModel], { nullable: true })
   items?: ItemModel[];
 }

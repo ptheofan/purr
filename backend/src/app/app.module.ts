@@ -7,6 +7,7 @@ import { GraphQLModule } from '@nestjs/graphql';
 import { ApolloServerPluginLandingPageLocalDefault } from '@apollo/server/plugin/landingPage/default';
 import { ConfigurationModule } from './modules/configuration';
 
+
 @Module({
   imports: [
     ConfigurationModule,
@@ -21,11 +22,13 @@ import { ConfigurationModule } from './modules/configuration';
       playground: false,
       plugins: [ApolloServerPluginLandingPageLocalDefault()],
       subscriptions: {
-        'graphql-ws': true
+        'graphql-ws': true,
       },
     }),
   ],
   controllers: [AppController],
-  providers: [WatcherService],
+  providers: [
+    WatcherService,
+  ],
 })
 export class AppModule {}

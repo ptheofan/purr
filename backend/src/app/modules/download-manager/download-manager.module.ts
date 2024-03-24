@@ -5,9 +5,14 @@ import { DownloaderFactory } from '../downloader';
 import { PutioModule } from '../putio';
 import { ConfigurationModule } from '../configuration';
 import { DownloadManagerResolver, GroupResolver, ItemResolver } from './resolvers';
+import { SubscriptionsModule } from '../subscriptions';
 
 @Module({
-  imports: [ConfigurationModule, forwardRef(() => PutioModule)],
+  imports: [
+    ConfigurationModule,
+    forwardRef(() => PutioModule),
+    SubscriptionsModule
+  ],
   controllers: [],
   providers: [
     DownloadManagerService,
