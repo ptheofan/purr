@@ -66,7 +66,7 @@ export class WatcherService {
       }
     } catch (err) {
       // log and ignore the error
-      this.logger.error(`ScanFolder ${localFolder} failed, error: ${err.message}`, err.stack);
+      this.logger.error(`ScanFolder ${localFolder} failed, error: ${err instanceof Error ? err.message : err}`);
     }
   }
 }

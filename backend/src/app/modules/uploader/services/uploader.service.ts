@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import * as fs from 'fs';
 import FormData from 'form-data';
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
 import { CreateUploadDto } from '../dtos';
 import { Transfer } from '@putdotio/api-client';
 import { PutioService } from '../../putio';
@@ -48,8 +48,9 @@ export class UploaderService {
 
       return r.data.transfer as Transfer;
     } catch (err) {
-      this.logger.error(`Create Upload Failed (${err.response.data.error_message})`, err.stack);
-      throw err;
+      const error = err as AxiosError;
+      this.logger.error(`Create Upload Failed (${error.message})`);
+      throw error;
     }
   }
 }

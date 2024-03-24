@@ -64,6 +64,11 @@ const countSmallLargeItems = (result: Item[], status: DownloadStatus[] = [Downlo
 }, { small: 0, large: 0 });
 
 describe('DownloadManagerService', () => {
+  // Set some values to process.env
+  process.env.PUTIO_CLIENT_ID = '1234';
+  process.env.PUTIO_CLIENT_SECRET = 'xxxx';
+  process.env.PUTIO_AUTH = 'xxxx';
+
   let service: DownloadManagerService;
   let groupsRepo: DownloadGroupsRepository;
   let itemsRepo: DownloadItemsRepository;

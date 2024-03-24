@@ -4,6 +4,7 @@ import { parseInt } from 'lodash';
 import fs from 'fs';
 import { RuntimeException } from '@nestjs/core/errors/exceptions';
 import { prettyBytes, prettyTime } from '../../helpers';
+import { z, ZodIssue } from 'zod';
 
 export type Target = {
   path: string;
@@ -33,6 +34,36 @@ export const EnvKeys = {
   DOWNLOADER_PERFORMANCE_MONITORING_TIME: 'DOWNLOADER_PERFORMANCE_MONITORING_TIME',
   DOWNLOADER_PERFORMANCE_MONITORING_SPEED: 'DOWNLOADER_PERFORMANCE_MONITORING_SPEED',
 }
+
+const configSchema = z.object({
+  port: z.number().default(3000),
+  host: z.string().default('http://localhost'),
+  putioClientId: z.number().int(),
+  putioClientSecret: z.string(),
+  putioAuth: z.string(),
+  watcherEnabled: z.boolean().default(true),
+  watcherTargets: z.array(z.object({
+    path: z.string(),
+    targetId: z.number().int(),
+  })),
+  downloaderEnabled: z.boolean().default(true),
+  downloaderTargets: z.array(z.object({
+    path: z.string(),
+    targetId: z.number().int(),
+  })),
+  downloaderChunkSize: z.number().default(1024 * 1024 * 8), // 8MB
+  putioWatcherSocket: z.boolean().default(true),
+  putioWebhooksEnabled: z.boolean().default(false),
+  putioCheckCronSchedule: z.string().optional(),
+  putioCheckAtStartup: z.boolean().default(true),
+  uiProgressUpdateInterval: z.number().default(333),
+  concurrentGroups: z.number().default(2),
+  concurrentSmallFiles: z.number().default(8),
+  concurrentLargeFiles: z.number().default(2),
+  downloaderPerformanceMonitoringEnabled: z.boolean().default(true),
+  downloaderPerformanceMonitoringTime: z.number().default(10),
+  downloaderPerformanceMonitoringSpeed: z.number().default(0),
+});
 
 @Injectable()
 export class AppConfigService {
@@ -64,6 +95,16 @@ export class AppConfigService {
     private readonly configService: ConfigService,
   ) {
     this.loadEnvConfig();
+    const validation = configSchema.safeParse(this);
+    if (validation.success === false) {
+      const errors: ZodIssue[] = validation.error.issues;
+      this.logger.warn(`Please fix the following errors:`);
+      errors.forEach((error) => {
+        this.logger.error(`  - ${error.path.join('.')} ${error.message}`);
+      });
+      // FATAL ERROR, exit here.
+      process.exit(5);
+    }
 
     // Pretty print the configuration
     this.logger.log(`Configuration loaded:`);

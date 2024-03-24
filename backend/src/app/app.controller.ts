@@ -26,7 +26,7 @@ export class AppController {
       this.logger.log(`Starting... ${ objectId }`);
       await this.downloadManagerService.start();
     } catch (err) {
-      return { error: err.message };
+      return { error: err instanceof Error ? err.message : err };
     }
   }
 

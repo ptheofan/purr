@@ -239,7 +239,7 @@ export class DownloadManagerService {
           return this.download(items[index], saveAs);
         }));
       } catch (error) {
-        this.logger.error(error, error.stack);
+        this.logger.error(error);
       }
     });
   }
@@ -282,8 +282,8 @@ export class DownloadManagerService {
           await this.start();
         });
     } catch (error) {
-      this.logger.error(error, error.stack);
-      await this.itemsRepo.update(item.id, { status: DownloadStatus.Error, error: error.message });
+      this.logger.error(error);
+      await this.itemsRepo.update(item.id, { status: DownloadStatus.Error, error: error instanceof Error ? error.message : error as string });
       await this.start();
     }
   }
