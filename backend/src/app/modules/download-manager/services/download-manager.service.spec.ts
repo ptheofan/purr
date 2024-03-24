@@ -8,6 +8,7 @@ import { DownloaderFactory } from '../../downloader';
 import { Group, Item } from '../entities';
 import { PutioService } from '../../putio';
 import { ConfigurationModule } from '../../configuration';
+import { GroupState } from '../enums/group-state.enum';
 
 type CreateItemsOptions = {
   groupId: number;
@@ -117,7 +118,7 @@ describe('DownloadManagerService', () => {
       const result = await service.addVolume(volume, '/save/here');
       expect(result).toMatchObject({ groups: 1, items: 1 });
       const group = await groupsRepo.getAll();
-      expect(group).toEqual([{
+      expect(group).toMatchObject([{
         id: 1,
         name: 'folder1',
         saveAt: '/save/here',
@@ -146,7 +147,7 @@ describe('DownloadManagerService', () => {
       const result = await service.addVolume(volume, '/save/here');
       expect(result).toMatchObject({ groups: 1, items: 1 });
       const group = await groupsRepo.getAll();
-      expect(group).toEqual([{
+      expect(group).toMatchObject([{
         id: 1,
         name: 'file1.txt',
         saveAt: '/save/here',
@@ -175,7 +176,7 @@ describe('DownloadManagerService', () => {
       const result = await service.addVolume(volume, '/save/here');
       expect(result).toMatchObject({ groups: 1, items: 1 });
       const group = await groupsRepo.getAll();
-      expect(group).toEqual([{
+      expect(group).toMatchObject([{
         id: 1,
         name: 'file1.txt',
         saveAt: '/save/here',
@@ -227,7 +228,9 @@ describe('DownloadManagerService', () => {
         id: 1,
         name: 'folder1',
         status: DownloadStatus.Pending,
-        saveAt: '/save/here'
+        saveAt: '/save/here',
+        addedAt: new Date(),
+        state: GroupState.Initializing,
       };
       const savePath = await service.computeDownloadSavePath(item, group);
       expect(savePath).toEqual('/save/here/folder1/file1.txt');
@@ -248,7 +251,9 @@ describe('DownloadManagerService', () => {
         id: 1,
         name: 'folder1',
         status: DownloadStatus.Pending,
-        saveAt: '/save/here/'
+        saveAt: '/save/here/',
+        addedAt: new Date(),
+        state: GroupState.Initializing,
       };
       const savePath = await service.computeDownloadSavePath(item, group);
       expect(savePath).toEqual('/save/here/folder1/file1.txt');
@@ -258,15 +263,15 @@ describe('DownloadManagerService', () => {
   describe('download group candidates', () => {
     it('should download all groups concurrently', async () => {
       groupsRepo.addMany([
-        { id: 1, name: 'group1', status: DownloadStatus.Downloading, saveAt: '/save/here' },
-        { id: 2, name: 'group2', status: DownloadStatus.Pending, saveAt: '/save/here' },
-        { id: 3, name: 'group3', status: DownloadStatus.Pending, saveAt: '/save/here' },
+        { id: 1, name: 'group1', status: DownloadStatus.Downloading, saveAt: '/save/here', addedAt: new Date(), state: GroupState.Initializing, },
+        { id: 2, name: 'group2', status: DownloadStatus.Pending, saveAt: '/save/here', addedAt: new Date(), state: GroupState.Initializing, },
+        { id: 3, name: 'group3', status: DownloadStatus.Pending, saveAt: '/save/here', addedAt: new Date(), state: GroupState.Initializing, },
       ]);
 
       // Unlimited groups concurrently
       service.setSettings({ concurrentGroups: 0 });
       const result = await service.getDownloadGroupCandidates();
-      expect(result).toEqual([
+      expect(result).toMatchObject([
         { id: 1, name: 'group1', status: DownloadStatus.Downloading, saveAt: '/save/here' },
         { id: 2, name: 'group2', status: DownloadStatus.Pending, saveAt: '/save/here' },
         { id: 3, name: 'group3', status: DownloadStatus.Pending, saveAt: '/save/here' },
@@ -275,13 +280,13 @@ describe('DownloadManagerService', () => {
 
     it('should download 2 groups concurrently', async () => {
       groupsRepo.addMany([
-        { id: 1, name: 'group1', status: DownloadStatus.Pending, saveAt: '/save/here' },
-        { id: 2, name: 'group2', status: DownloadStatus.Pending, saveAt: '/save/here' },
-        { id: 3, name: 'group3', status: DownloadStatus.Pending, saveAt: '/save/here' },
+        { id: 1, name: 'group1', status: DownloadStatus.Pending, saveAt: '/save/here', addedAt: new Date(), state: GroupState.Initializing, },
+        { id: 2, name: 'group2', status: DownloadStatus.Pending, saveAt: '/save/here', addedAt: new Date(), state: GroupState.Initializing, },
+        { id: 3, name: 'group3', status: DownloadStatus.Pending, saveAt: '/save/here', addedAt: new Date(), state: GroupState.Initializing, },
       ]);
 
       const result = await service.getDownloadGroupCandidates();
-      expect(result).toEqual([
+      expect(result).toMatchObject([
         { id: 1, name: 'group1', status: DownloadStatus.Pending, saveAt: '/save/here' },
         { id: 2, name: 'group2', status: DownloadStatus.Pending, saveAt: '/save/here' },
       ]);
@@ -289,15 +294,15 @@ describe('DownloadManagerService', () => {
 
     it('should download 2 groups concurrently and ignore groups in non-downloadable states', async () => {
       groupsRepo.addMany([
-        { id: 1, name: 'group1', status: DownloadStatus.Completed, saveAt: '/save/here' },
-        { id: 2, name: 'group2', status: DownloadStatus.Pending, saveAt: '/save/here' },
-        { id: 3, name: 'group3', status: DownloadStatus.Error, saveAt: '/save/here' },
-        { id: 4, name: 'group4', status: DownloadStatus.Downloading, saveAt: '/save/here' },
-        { id: 5, name: 'group5', status: DownloadStatus.Pending, saveAt: '/save/here' },
+        { id: 1, name: 'group1', status: DownloadStatus.Completed, saveAt: '/save/here', addedAt: new Date(), state: GroupState.Initializing, },
+        { id: 2, name: 'group2', status: DownloadStatus.Pending, saveAt: '/save/here', addedAt: new Date(), state: GroupState.Initializing, },
+        { id: 3, name: 'group3', status: DownloadStatus.Error, saveAt: '/save/here', addedAt: new Date(), state: GroupState.Initializing, },
+        { id: 4, name: 'group4', status: DownloadStatus.Downloading, saveAt: '/save/here', addedAt: new Date(), state: GroupState.Initializing, },
+        { id: 5, name: 'group5', status: DownloadStatus.Pending, saveAt: '/save/here', addedAt: new Date(), state: GroupState.Initializing, },
       ]);
 
       const result = await service.getDownloadGroupCandidates();
-      expect(result).toEqual([
+      expect(result).toMatchObject([
         { id: 4, name: 'group4', status: DownloadStatus.Downloading, saveAt: '/save/here' },
         { id: 2, name: 'group2', status: DownloadStatus.Pending, saveAt: '/save/here' },
       ]);
@@ -307,9 +312,9 @@ describe('DownloadManagerService', () => {
   describe('download items candidates',() => {
     it('should respect concurrency controls', async () => {
       await groupsRepo.addMany([
-        { id: 1, name: 'group1', status: DownloadStatus.Completed, saveAt: '/save/here' },
-        { id: 2, name: 'group2', status: DownloadStatus.Downloading, saveAt: '/save/here' },
-        { id: 3, name: 'group3', status: DownloadStatus.Error, saveAt: '/save/here' },
+        { id: 1, name: 'group1', status: DownloadStatus.Completed, saveAt: '/save/here', addedAt: new Date(), state: GroupState.Initializing, },
+        { id: 2, name: 'group2', status: DownloadStatus.Downloading, saveAt: '/save/here', addedAt: new Date(), state: GroupState.Initializing, },
+        { id: 3, name: 'group3', status: DownloadStatus.Error, saveAt: '/save/here', addedAt: new Date(), state: GroupState.Initializing, },
       ]);
 
       await itemsRepo.addMany(createItems({
@@ -332,10 +337,10 @@ describe('DownloadManagerService', () => {
 
     it('should respect concurrency controls even with multiple groups', async () => {
       await groupsRepo.addMany([
-        { id: 1, name: 'group1', status: DownloadStatus.Completed, saveAt: '/save/here' },
-        { id: 2, name: 'group2', status: DownloadStatus.Downloading, saveAt: '/save/here' },
-        { id: 3, name: 'group3', status: DownloadStatus.Pending, saveAt: '/save/here' },
-        { id: 4, name: 'group4', status: DownloadStatus.Error, saveAt: '/save/here' },
+        { id: 1, name: 'group1', status: DownloadStatus.Completed, saveAt: '/save/here', addedAt: new Date(), state: GroupState.Initializing, },
+        { id: 2, name: 'group2', status: DownloadStatus.Downloading, saveAt: '/save/here', addedAt: new Date(), state: GroupState.Initializing, },
+        { id: 3, name: 'group3', status: DownloadStatus.Pending, saveAt: '/save/here', addedAt: new Date(), state: GroupState.Initializing, },
+        { id: 4, name: 'group4', status: DownloadStatus.Error, saveAt: '/save/here', addedAt: new Date(), state: GroupState.Initializing, },
       ]);
 
       await itemsRepo.addMany(createItems({
