@@ -6,6 +6,7 @@ import { RuntimeException } from '@nestjs/core/errors/exceptions';
 import { prettyBytes, prettyTime } from '../../../helpers';
 import { z, ZodIssue } from 'zod';
 import { Target } from '../models';
+import * as process from 'process';
 
 export const EnvKeys = {
   PORT: 'PORT',
@@ -29,6 +30,9 @@ export const EnvKeys = {
   DOWNLOADER_PERFORMANCE_MONITORING_ENABLED: 'DOWNLOADER_PERFORMANCE_MONITORING_ENABLED',
   DOWNLOADER_PERFORMANCE_MONITORING_TIME: 'DOWNLOADER_PERFORMANCE_MONITORING_TIME',
   DOWNLOADER_PERFORMANCE_MONITORING_SPEED: 'DOWNLOADER_PERFORMANCE_MONITORING_SPEED',
+  DOWNLOADER_ARBITRARY_DOWNLOADS_ENABLED: 'DOWNLOADER_ARBITRARY_DOWNLOADS_ENABLED',
+  DOWNLOADER_ARBITRARY_DOWNLOADS_ROOT_FOLDER: 'DOWNLOADER_ARBITRARY_DOWNLOADS_ROOT_FOLDER',
+
 }
 
 const configSchema = z.object({
@@ -59,6 +63,20 @@ const configSchema = z.object({
   downloaderPerformanceMonitoringEnabled: z.boolean().default(true),
   downloaderPerformanceMonitoringTime: z.number().default(10),
   downloaderPerformanceMonitoringSpeed: z.number().default(0),
+  downloaderArbitraryDownloadsEnabled: z.boolean().default(false),
+  downloaderArbitraryDownloadsRootFolder: z.string().default('/mnt'),
+}).superRefine((data, ctx) => {
+  if (data.downloaderArbitraryDownloadsEnabled) {
+    // ensure downloaderArbitraryDownloadsRootFolder exists
+    if (!fs.existsSync(data.downloaderArbitraryDownloadsRootFolder)) {
+      ctx.addIssue({
+        path: ['downloaderArbitraryDownloadsRootFolder'],
+        message: `Path does not exist: ${data.downloaderArbitraryDownloadsRootFolder}`,
+        fatal: true,
+        code: z.ZodIssueCode.custom,
+      });
+    }
+  }
 });
 
 @Injectable()
@@ -86,6 +104,8 @@ export class AppConfigService {
   private _downloaderPerformanceMonitoringEnabled: boolean;
   private _downloaderPerformanceMonitoringTime: number;
   private _downloaderPerformanceMonitoringSpeed: number;
+  private _downloaderArbitraryDownloadsEnabled: boolean;
+  private _downloaderArbitraryDownloadsRootFolder: string;
 
   constructor(
     private readonly configService: ConfigService,
@@ -167,6 +187,8 @@ export class AppConfigService {
     if (this._downloaderPerformanceMonitoringSpeed === 0) {
       this._downloaderPerformanceMonitoringSpeed = Math.floor(this._downloaderChunkSize * 0.8);
     }
+    this._downloaderArbitraryDownloadsEnabled = this.loadEnvBoolean(EnvKeys.DOWNLOADER_ARBITRARY_DOWNLOADS_ENABLED, false);
+    this._downloaderArbitraryDownloadsRootFolder = this.loadEnvString(EnvKeys.DOWNLOADER_ARBITRARY_DOWNLOADS_ROOT_FOLDER, '/mnt');
 
     // Validate Targets
     this._watcherTargets.forEach((target) => {
@@ -378,5 +400,21 @@ export class AppConfigService {
 
   set downloaderPerformanceMonitoringSpeed(value: number) {
     this._downloaderPerformanceMonitoringSpeed = value;
+  }
+
+  get downloaderArbitraryDownloadsEnabled(): boolean {
+    return this._downloaderArbitraryDownloadsEnabled;
+  }
+
+  set downloaderArbitraryDownloadsEnabled(value: boolean) {
+    this._downloaderArbitraryDownloadsEnabled = value;
+  }
+
+  get downloaderArbitraryDownloadsRootFolder(): string {
+    return this._downloaderArbitraryDownloadsRootFolder;
+  }
+
+  set downloaderArbitraryDownloadsRootFolder(value: string) {
+    this._downloaderArbitraryDownloadsRootFolder = value;
   }
 }
