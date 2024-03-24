@@ -1,0 +1,21 @@
+# Ignore node_modules directory
+node_modules
+
+# Exclude any npm debug log files
+npm-debug.log
+
+# Exclude any .git directories
+.git
+
+# Exclude any .DS_Store files (for macOS)
+.DS_Store
+
+# Exclude any build artifacts or temporary files
+/build
+/tmp
+*.log
+*.tmp
+
+/data
+.github
+dist
