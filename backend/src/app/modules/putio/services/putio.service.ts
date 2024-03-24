@@ -180,8 +180,7 @@ export class PutioService {
 
     if (file.file_type === 'FOLDER') {
       // I am a folder, create my structure and add all my files and folders
-      let rVal: IVFSNode;
-      rVal = {
+      const rVal: IVFSNode = {
         [file.name]: {
           ['.meta']: JSON.stringify(file),
         },
