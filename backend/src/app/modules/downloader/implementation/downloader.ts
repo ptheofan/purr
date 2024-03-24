@@ -33,12 +33,6 @@ export interface ResumableDownloaderOpts {
   onError?: ErrorCallback;
 }
 
-interface WorkerData {
-  id: string;
-  state: WorkerState;
-  stats: WorkerStats;
-}
-
 /**
  * How it works:
  * - The downloader is split into workers
@@ -72,7 +66,7 @@ export class Downloader<T> implements IDownloader {
   private workersCount: number;
   private chunkSize: number;
   private stats: DownloaderStats;
-  private workers: Map<string, WorkerData> = new Map();
+  private workers: Map<string, WorkerStats> = new Map();
   private progressUpdateInterval?: number; // ms
   private progressCallback?: ProgressCallback;
   private completedCallback?: CompletedCallback;
@@ -83,7 +77,6 @@ export class Downloader<T> implements IDownloader {
   private maxRedirects: number = 3;
   private logger: Logger | null;
   private downloadStartedAt: number;
-  private rnd: number;
 
   /**
    * Create a downloader
@@ -108,7 +101,6 @@ export class Downloader<T> implements IDownloader {
     downloader.status = opts.status || DownloaderStatus.STOPPED;
     downloader.debugOutput = opts.debugOutput;
     downloader.workersCount = opts.workersCount || 1;
-    downloader.rnd = Math.floor(Math.random() * 1000);
 
     if (!downloader.httpAgent) {
       downloader.httpAgent = new http.Agent({
@@ -160,7 +152,6 @@ export class Downloader<T> implements IDownloader {
       timestamp: Date.now(),
       downloadedBytes: this.ranges.count(FragmentStatus.finished),
       speedTracker: new SpeedTracker(10),
-      workers: Array.from(this.workers.values(), (worker) => worker.stats),
       ranges: this.ranges.ranges,
     }
   }
@@ -230,31 +221,29 @@ export class Downloader<T> implements IDownloader {
         try {
           await this.startWorkers();
           const fileCRC = await crc32File(this.saveAs);
-          console.log('FileCRC = ', fileCRC);
-          console.log('ItemCRC = ', this.sourceObject['crc32']);
-          this.logger.debug(`CRC Check: ${fileCRC === this.sourceObject['crc32'] ? 'OK' : 'FAILED'}`);
+          this.logger.log('FileCRC = ', fileCRC);
+          this.logger.log('ItemCRC = ', this.sourceObject['crc32']);
+          this.logger.log(`CRC Check: ${fileCRC === this.sourceObject['crc32'] ? 'OK' : 'FAILED'}`);
           return resolve();
         } catch (err) {
-          this.logger.debug(`Error: ${err} - ${err.message} - ${typeof err}`);
           if (err === WorkerState.STOPPED || err.message === WorkerState.STOPPED) {
-            this.logger?.debug(`Cancellation Requested! Determining flow...`);
             switch (this.status) {
               case DownloaderStatus.STOPPING:
                 // Download stopped
-                this.debugOutput && this.logger?.debug(`Download Stopped! Stopping workers...`);
+                this.debugOutput && this.logger.debug(`Download Stopped! Stopping workers...`);
                 await this.waitForWorkersToEnterState(WorkerState.STOPPED);
                 this.status = DownloaderStatus.STOPPED;
                 return resolve();
               case DownloaderStatus.RESTARTING:
                 // Connections reset
-                this.debugOutput && this.logger?.debug(`Too Slow! Restarting workers...`);
+                this.debugOutput && this.logger.debug(`Too Slow! Restarting workers...`);
                 await this.waitForWorkersToEnterState(WorkerState.STOPPED);
-                this.debugOutput && this.logger?.debug(`All workers stopped (DownloaderStatus = ${ this.status } - WorkersState = ${ Array.from(this.workers.values()).map((worker) => worker.state).join(', ')})`);
+                this.debugOutput && this.logger.debug(`All workers stopped (DownloaderStatus = ${ this.status } - WorkersState = ${ Array.from(this.workers.values()).map((worker) => worker.state).join(', ')})`);
                 // Wait 1 second before restarting
                 await new Promise((resolve) => setTimeout(resolve, 1000));
                 break;
               default:
-                this.debugOutput && this.logger?.error(`Unexpected Workers Cancellation (${ err.message })`, err.stack);
+                this.debugOutput && this.logger.error(`Unexpected Workers Cancellation (${ err.message })`, err.stack);
                 this.errorHandler(err);
                 return reject(err);
             }
@@ -266,7 +255,7 @@ export class Downloader<T> implements IDownloader {
                 return resolve();
               }
 
-              this.debugOutput && this.logger?.error(`Error while running workers (${ err.message })`, err.stack);
+              this.debugOutput && this.logger.error(`Error while running workers (${ err.message })`, err.stack);
               this.errorHandler(err);
               return reject(err);
             }
@@ -310,28 +299,30 @@ export class Downloader<T> implements IDownloader {
       this.workers.set(id, {
         id: id,
         state: WorkerState.STOPPED,
-        stats: {
-          id: id,
-          timestamp: Date.now(),
-          speedTracker: new SpeedTracker(0, true),
-          rangesCount: 0,
-          downloadedBytes: 0,
-        },
+        timestamp: Date.now(),
+        speedTracker: new SpeedTracker(0, true),
+        rangesCount: 0,
+        downloadedBytes: 0,
+        range: undefined,
       });
 
       // Push worker to workers list
       workers.push(this.worker(id));
     }
 
-    this.logger?.log(`Starting download ${this.saveAs}`);
+    this.debugOutput && this.logger.debug(`Starting Workers for ${this.saveAs}`);
     this.downloadStartedAt = Date.now();
     await Promise.all(workers);
-    this.debugOutput && this.logger?.debug('All workers completed');
+    this.debugOutput && this.logger.debug('All workers completed');
     this.completedHandler();
   }
 
   getStats(): DownloaderStats {
     return this.stats;
+  }
+
+  getWorkersStats(): WorkerStats[] {
+    return Array.from(this.workers.values());
   }
 
   async stop() {
@@ -345,6 +336,7 @@ export class Downloader<T> implements IDownloader {
    * Wait for all workers to reach a specific status
    */
   protected async waitForWorkersToEnterState(status: WorkerState, onRetry?: () => void ): Promise<void> {
+    let lastStateSummary: string;
     return new Promise((resolve) => {
       const interval = setInterval(() => {
         if (Array.from(this.workers.values()).every((worker) => worker.state === status)) {
@@ -352,7 +344,10 @@ export class Downloader<T> implements IDownloader {
           resolve();
         } else {
           onRetry && onRetry();
-          this.logger?.debug(`Waiting for workers to enter state ${status} - ${Array.from(this.workers.values()).map((worker) => worker.state).join(', ')}, Downloader.status = ${this.status}`);
+          const stateSummary = Array.from(this.workers.values()).map((worker) => worker.state).join(', ');
+          if (stateSummary !== lastStateSummary) {
+            this.logger.debug(`Waiting for workers to enter state ${ status } - ${ Array.from(this.workers.values()).map((worker) => worker.state).join(', ') }, Downloader.status = ${ this.status }`);
+          }
         }
       }, 100);
     });
@@ -376,17 +371,23 @@ export class Downloader<T> implements IDownloader {
   }
 
   protected async worker(id: string): Promise<void> {
-    this.workers.get(id).state = WorkerState.RUNNING;
+    const wStats = this.workers.get(id);
+    wStats.state = WorkerState.RUNNING;
 
     while (this.status === DownloaderStatus.RUNNING) {
       const range = this.ranges.findSequenceOfAtLeast(this.chunkSize, FragmentStatus.pending);
       if (!range) {
-        this.debugOutput && this.logger?.debug(`[${id}] Worker Finished`);
-        this.workers.get(id).state = WorkerState.STOPPED;
+        wStats.state = WorkerState.STOPPED;
+        wStats.range = undefined;
         return;
       }
 
       this.ranges.markAs(range.start, range.end, FragmentStatus.reserved);
+      wStats.range = {
+        start: range?.start || 0,
+        end: range?.end || 0,
+        downloadedBytes: 0,
+      };
       const cancelToken = axios.CancelToken.source();
       this.cancelTokens.set(id, cancelToken);
       const axiosOpts: AxiosRequestConfig = {
@@ -413,11 +414,8 @@ export class Downloader<T> implements IDownloader {
               return;
             }
 
-            // DEBUG: RESET CONNECTIONS 10 sec - restart 10 sec
-            const now = Date.now();
-            if (now - this.downloadStartedAt > 10000) {
-              this.logger.debug(`[POLICE ${this.rnd}] ${ prettyTimeOfDay(now) } - ${ prettyTimeOfDay(this.downloadStartedAt) } = ${ prettyTime(now - this.downloadStartedAt) }`);
-              // 10 sec elapsed, restart connection
+            if (this.shouldRestartWorkers()) {
+              // Trigger workers restart
               this.restartWorkers();
             }
             this.progressUpdateHandler(buffer.length, id);
@@ -425,7 +423,7 @@ export class Downloader<T> implements IDownloader {
           stream.on('error', (err: Error) => {
             fd.close();
             this.ranges.markAs(range.start, range.end, FragmentStatus.pending);
-            this.workers.get(id).state = WorkerState.STOPPED;
+            wStats.state = WorkerState.STOPPED;
             if (err instanceof CanceledError && err.message === WorkerState.STOPPED) {
               // Intentional interruption on
               return reject(WorkerState.STOPPED);
@@ -435,7 +433,7 @@ export class Downloader<T> implements IDownloader {
             throw err;
           });
           stream.on('close', () => {
-            this.workers.get(id).state = WorkerState.STOPPED;
+            wStats.state = WorkerState.STOPPED;
             resolve();
           });
           stream.pipe(fileStream);
@@ -443,57 +441,91 @@ export class Downloader<T> implements IDownloader {
 
         // Range completed, loop to next range
         this.ranges.markAs(range.start, range.end, FragmentStatus.finished);
-        this.workers.get(id).stats.rangesCount++;
+        wStats.rangesCount++;
         await fd.close();
       } catch (err) {
         this.ranges.markAs(range.start, range.end, FragmentStatus.pending);
-        this.workers.get(id).state = WorkerState.STOPPED;
+        wStats.state = WorkerState.STOPPED;
         await fd.close();
         throw err;
       }
     }
 
-    this.workers.get(id).state = WorkerState.STOPPED;
+    wStats.state = WorkerState.STOPPED;
   }
 
-  public progressUpdateHandler(length: number, workerId: string): void {
+  /**
+   * Check if the download speed is too slow and restart the connections
+   */
+  shouldRestartWorkers(): boolean {
+    return false;
+    // DEBUG: RESET CONNECTIONS 10 sec - restart 10 sec
+    const now = Date.now();
+    if (now - this.downloadStartedAt > 10000) {
+      this.logger.debug(`[POLICE] ${ prettyTimeOfDay(now) } - ${ prettyTimeOfDay(this.downloadStartedAt) } = ${ prettyTime(now - this.downloadStartedAt) }`);
+      // 10 sec elapsed, restart connection
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
+   * Update the progress of the downloader
+   */
+  progressUpdateHandler(length: number, workerId: string): void {
     // progress tracking....
     const now = Date.now();
-    const workerStats = this.workers.get(workerId).stats;
+    const wStats = this.workers.get(workerId);
 
-    workerStats.timestamp = now;
-    workerStats.speedTracker.update(now, length);
-    workerStats.downloadedBytes += length;
+    wStats.timestamp = now;
+    wStats.speedTracker.update(now, length);
+    wStats.downloadedBytes += length;
+    wStats.range.downloadedBytes += length;
 
     this.stats.timestamp = now;
     this.stats.speedTracker.update(now, length);
     this.stats.downloadedBytes += length;
 
     // Call update progress callback if needed
-    if (this.progressUpdateInterval !== undefined) {
-      if (now - this.lastProgressUpdateTimestamp >= this.progressUpdateInterval) {
-        this.lastProgressUpdateTimestamp = now;
-        if (this.progressCallback) this.progressCallback(this, this.stats);
+    if (this.progressUpdateInterval === undefined) {
+      this.progressCallback && this.progressCallback(this, this.stats);
+      return;
+    }
 
-        if (this.logger && this.debugOutput) {
-          // print in a single row the rates for each worker
-          const rates: string[] = [];
-          const now = new Date();
-          const from = new Date(Date.now() - 10000);  // last 10 seconds
-          this.workers.forEach((data) => {
-            rates.push(`${data.id}: ${prettyBytes(data.stats.speedTracker.query(from, now), true)}`);
-          });
-          this.logger.debug(`${this.saveAs}`);
-          this.logger.debug(`${prettyBytes(this.stats.speedTracker.query(from, now), true)} (${rates.join(' | ')})`);
-          for (let i=0; i < this.ranges.ranges.length; i++) {
-            const range = this.ranges.ranges[i];
-            this.logger.debug(`range-${i}: [${range.status}] ${range.start}-${range.end}`);
+
+    if (now - this.lastProgressUpdateTimestamp >= this.progressUpdateInterval) {
+      this.lastProgressUpdateTimestamp = now;
+      if (this.progressCallback) this.progressCallback(this, this.stats);
+
+      if (this.logger && this.debugOutput) {
+        // print in a single row the rates for each worker
+        const rates: string[] = [];
+        const now = new Date();
+        const from = new Date(Date.now() - 10000);  // last 10 seconds
+        this.workers.forEach((data) => {
+          // Download rate of worker
+          const rate = prettyBytes(data.speedTracker.query(from, now), true);
+
+          // Downloaded bytes of worker (total in his lifetime)
+          const bytesDownloaded = prettyBytes(data.downloadedBytes);
+
+          // Percentage of the range downloaded
+          if (data.range) {
+            const rangeRemaining = data.range ? data.range.end - data.range.start : 0;
+            const percentage = ((data.range.downloadedBytes / rangeRemaining) * 100).toFixed(0);
+
+            // rates.push(`${rate} - ${bytesDownloaded} - ${percentage}%`);
+            rates.push(`${ percentage }%`);
           }
+        });
+        this.logger.debug(`${this.saveAs}`);
+        this.logger.debug(`${prettyBytes(this.stats.speedTracker.query(from, now), true)} (${rates.join(' | ')})`);
+        for (let i=0; i < this.ranges.ranges.length; i++) {
+          const range = this.ranges.ranges[i];
+          this.logger.debug(`range-${i}: [${range.status}] ${range.start}-${range.end}`);
         }
       }
-    } else {
-      // report progress every time
-      if (this.progressCallback) this.progressCallback(this, this.stats);
     }
   }
 

@@ -40,16 +40,23 @@ export interface DownloaderStats {
   timestamp: number;
   downloadedBytes: number;
   speedTracker: SpeedTracker;
-  workers: WorkerStats[];
   ranges: Fragment[];
+}
+
+export interface RangeStats {
+  start: number;
+  end: number;
+  downloadedBytes: number;
 }
 
 export interface WorkerStats {
   id: string;
+  state: WorkerState;
   timestamp: number;
   speedTracker: SpeedTracker;
   rangesCount: number;
   downloadedBytes: number;
+  range?: RangeStats;
 }
 
 export type ProgressCallback = (downloader: IDownloader, stats: DownloaderStats) => void;

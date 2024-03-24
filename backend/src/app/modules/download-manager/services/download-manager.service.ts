@@ -208,45 +208,40 @@ export class DownloadManagerService {
    * Start the download queue
    */
   async start() {
-    const release = await startMutex.acquire();
-    try {
-      const groups = await this.getDownloadGroupCandidates();
-      if (groups.length === 0) {
-        release();
-        return;
-      }
-
-      const items = await this.getDownloadItemCandidates(groups);
-      if (items.length === 0) {
-        release();
-        return;
-      }
-
-      // Get download links for all items to download
-      // We retrieve the with minimum possible number of calls to prevent
-      // possible rate limiting from putio
-      let links: string[] = [];
+    return startMutex.runExclusive(async () => {
       try {
-        links = await this.putioService.getDownloadLinks(items.map(item => item.id));
-      } catch (error) {
-        this.logger.error('Failed to get download links from putio.', error);
-        release();
-        return;
-      }
+        const groups = await this.getDownloadGroupCandidates();
+        if (groups.length === 0) {
+          return;
+        }
 
-      // assign the download links to the items and start downloading them
-      await Promise.all(items.map(async (item, index) => {
-        items[index].downloadLink = links[index];
-        const group = groups.find(group => group.id === items[index].groupId);
-        const saveAs = await this.computeDownloadSavePath(items[index], group);
-        console.log('Downloader', items[index], saveAs);
-        return this.download(items[index], saveAs);
-      }));
-    } catch (error) {
-      this.logger.error(error, error.stack);
-    } finally {
-      release();
-    }
+        const items = await this.getDownloadItemCandidates(groups);
+        if (items.length === 0) {
+          return;
+        }
+
+        // Get download links for all items to download
+        // We retrieve the with minimum possible number of calls to prevent
+        // possible rate limiting from putio
+        let links: string[] = [];
+        try {
+          links = await this.putioService.getDownloadLinks(items.map(item => item.id));
+        } catch (error) {
+          this.logger.error('Failed to get download links from putio.', error);
+          return;
+        }
+
+        // assign the download links to the items and start downloading them
+        await Promise.all(items.map(async (item, index) => {
+          items[index].downloadLink = links[index];
+          const group = groups.find(group => group.id === items[index].groupId);
+          const saveAs = await this.computeDownloadSavePath(items[index], group);
+          return this.download(items[index], saveAs);
+        }));
+      } catch (error) {
+        this.logger.error(error, error.stack);
+      }
+    });
   }
 
   protected async download(item: Item, saveAs: string) {
@@ -254,6 +249,8 @@ export class DownloadManagerService {
       // Get the download link from putio
       throw new RuntimeException(`Download link for item ${ item.id } is not available.`);
     }
+
+    await this.updateItemStatus(item.id, DownloadStatus.Downloading);
 
     try {
       const downloader = await this.downloaderFactory.create({
