@@ -221,8 +221,8 @@ export class Downloader<T> implements IDownloader {
         try {
           await this.startWorkers();
           const fileCRC = await crc32File(this.saveAs);
-          this.logger.log('FileCRC = ', fileCRC);
-          this.logger.log('ItemCRC = ', this.sourceObject['crc32']);
+          this.logger.log(`FileCRC = ${fileCRC}`);
+          this.logger.log(`ItemCRC = ${this.sourceObject['crc32']}`);
           this.logger.log(`CRC Check: ${fileCRC === this.sourceObject['crc32'] ? 'OK' : 'FAILED'}`);
           return resolve();
         } catch (err) {
