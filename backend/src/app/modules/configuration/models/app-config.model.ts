@@ -1,8 +1,8 @@
 import { Field, Int, ObjectType } from '@nestjs/graphql';
 import { Target } from './target.model';
 
-@ObjectType()
-export class AppConfig {
+@ObjectType('AppConfig', { description: 'The app configuration.' })
+export class AppConfigModel {
   @Field(() => Int)
   port: number;
 

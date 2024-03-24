@@ -11,6 +11,7 @@ import { RuntimeException } from '@nestjs/core/errors/exceptions';
 import * as path from 'path';
 import * as fs from 'fs';
 import { AppConfigService } from '../../configuration';
+import { GroupState } from '../enums/group-state.enum';
 
 export interface IDownloadManagerSettings {
   concurrentLargeFiles?: number;
@@ -21,6 +22,7 @@ export interface IDownloadManagerSettings {
 
 export type TAddVolumeResponse = {
   success: boolean;
+  analysisCompletedPromise: Promise<void>;
 } & ({ success: true; groups: number; items: number } | { success: false; message: string });
 
 const startMutex = new Mutex();
@@ -72,6 +74,7 @@ export class DownloadManagerService {
         success: true,
         groups: 0,
         items: 0,
+        analysisCompletedPromise: Promise.resolve(),
       };
     }
 
@@ -82,11 +85,14 @@ export class DownloadManagerService {
       return {
         success: false,
         message: 'Group already exists.',
+        analysisCompletedPromise: Promise.resolve(),
       };
     }
     group.id = firstNodeMeta.id;
     group.name = firstNodeMeta.name;
+    group.addedAt = new Date();
     group.saveAt = saveAt;
+    group.state = GroupState.Initializing;
     await this.groupsRepo.add(group);
 
     const items: Item[] = [];
@@ -120,12 +126,18 @@ export class DownloadManagerService {
     await this.itemsRepo.addMany(uniqueItems);
 
     // Check if the items are already downloaded and update them accordingly
-    await this.checkGroupItemsOnDisk(group.id);
+    const analysisCompletedPromise = new Promise<void>((resolve) => {
+      this.checkGroupItemsOnDisk(group.id).then(async ({ groupId }) => {
+        await this.groupsRepo.update(groupId, { state: GroupState.Ready });
+        resolve();
+      });
+    });
 
     return {
       success: true,
       groups: 1,
       items: uniqueItems.length,
+      analysisCompletedPromise,
     };
   }
 
@@ -135,9 +147,10 @@ export class DownloadManagerService {
    * If they do not exist, mark them as pending
    * If they exist but the CRC32 does not match, mark them as pending and delete the local files
    */
-  async checkGroupItemsOnDisk(groupId: number) {
+  async checkGroupItemsOnDisk(groupId: number): Promise<{ groupId: number }> {
     const group = await this.groupsRepo.find((group) => group.id === groupId);
     const items = await this.itemsRepo.filter((item) => item.groupId === groupId);
+    let itemsCompletedCounter = 0;
     for (const item of items) {
       const saveAs = await this.computeDownloadSavePath(item, group);
       // if saveAs exists in local fs verify CRC32
@@ -151,9 +164,17 @@ export class DownloadManagerService {
         } else {
           // If the file exists and the CRC32 matches, mark the item as completed
           await this.itemsRepo.update(item.id, { status: DownloadStatus.Completed });
+          itemsCompletedCounter++;
         }
       }
     }
+
+    // if all items are completed, mark the group as completed
+    if (itemsCompletedCounter === items.length) {
+      await this.groupsRepo.update(groupId, { status: DownloadStatus.Completed });
+    }
+
+    return { groupId };
   }
 
   async computeDownloadSavePath(item: Item, group: Group) {

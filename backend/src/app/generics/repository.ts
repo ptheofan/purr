@@ -1,5 +1,4 @@
 import { Predicate } from './repository.types';
-import { Item } from '../modules';
 import { cloneDeep } from 'lodash';
 
 export abstract class Repository<T, K extends keyof T> {
@@ -27,7 +26,7 @@ export abstract class Repository<T, K extends keyof T> {
     return this.data.find(predicate);
   }
 
-  async update(id: T[K], update: Partial<Item>) {
+  async update(id: T[K], update: Partial<T>) {
     const index = this.data.findIndex(item => this.dataEquals(item, id));
     if (index === -1) {
       return;

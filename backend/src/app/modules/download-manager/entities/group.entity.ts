@@ -1,4 +1,5 @@
 import { DownloadStatus } from '../enums';
+import { GroupState } from '../enums/group-state.enum';
 
 /**
  * A group represents a set of files that should be downloaded together.
@@ -9,6 +10,9 @@ export class Group {
   // The folder id (IFile.id)
   id: number;
 
+  // The date when the group was added
+  addedAt: Date;
+
   // The IFile.name of the folder or file
   name: string;
 
@@ -18,4 +22,7 @@ export class Group {
 
   // The download status
   status: DownloadStatus = DownloadStatus.Pending;
+
+  // The state of the group (initializing, ready, etc.)
+  state: GroupState = GroupState.Initializing;
 }

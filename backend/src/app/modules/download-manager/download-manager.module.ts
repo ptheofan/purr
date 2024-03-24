@@ -4,6 +4,7 @@ import { DownloadManagerService } from './services';
 import { DownloaderFactory } from '../downloader';
 import { PutioModule } from '../putio';
 import { ConfigurationModule } from '../configuration';
+import { DownloadManagerResolver, GroupResolver, ItemResolver } from './resolvers';
 
 @Module({
   imports: [ConfigurationModule, forwardRef(() => PutioModule)],
@@ -14,6 +15,9 @@ import { ConfigurationModule } from '../configuration';
     DownloaderFactory,
     DownloadGroupsRepository,
     DownloadItemsRepository,
+    GroupResolver,
+    ItemResolver,
+    DownloadManagerResolver,
   ],
   exports: [
     DownloadManagerService,

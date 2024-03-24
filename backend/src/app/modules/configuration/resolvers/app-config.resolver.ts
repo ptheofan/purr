@@ -1,17 +1,17 @@
 import { Resolver } from '@nestjs/graphql';
-import { AppConfig } from '../models';
+import { AppConfigModel } from '../models';
 import { AppConfigService } from '../services';
 import { Query } from '@nestjs/graphql';
 
-@Resolver(() => AppConfig)
+@Resolver(() => AppConfigModel)
 export class AppConfigResolver {
   constructor(
     private readonly appConfigService: AppConfigService,
   ) {
   }
 
-  @Query(() => AppConfig)
-  async appConfig(): Promise<AppConfig> {
+  @Query(() => AppConfigModel)
+  async appConfig(): Promise<AppConfigModel> {
     return {
       port: this.appConfigService.port,
       host: this.appConfigService.host,
