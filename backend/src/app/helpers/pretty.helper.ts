@@ -12,4 +12,22 @@ export function prettyBytes(bytes: number, perSecond = false): string {
     return `${size.toFixed(2)} ${units[unitIndex]}/s`;
   }
   return `${size.toFixed(2)} ${units[unitIndex]}`;
-};
+}
+
+export function prettyTime(ms: number): string {
+  const units = ['ms', 's', 'm', 'h', 'd'];
+  let time = ms;
+  let unitIndex = 0;
+
+  while (time >= 1000 && unitIndex < units.length - 1) {
+    time /= 1000;
+    unitIndex++;
+  }
+
+  return `${time.toFixed(2)} ${units[unitIndex]}`;
+}
+
+export function prettyTimeOfDay(ms: number): string {
+  const date = new Date(ms);
+  return date.toLocaleTimeString();
+}

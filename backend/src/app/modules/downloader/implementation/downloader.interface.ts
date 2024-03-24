@@ -24,9 +24,16 @@ export class DownloaderOpts<T> {
 
 export enum DownloaderStatus {
   RUNNING = 'running',
-  PAUSED = 'paused',
+  STOPPING = 'stopping',
+  STOPPED = 'stopped',
+  RESTARTING = 'restarting',
   COMPLETED = 'completed',
   ERROR = 'error',
+}
+
+export enum WorkerState {
+  RUNNING = 'running',
+  STOPPED = 'stopped',
 }
 
 export interface DownloaderStats {

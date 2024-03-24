@@ -254,4 +254,23 @@ describe('Ranges', () => {
     chunk = ranges.findFirst(FragmentStatus.pending);
     expect(chunk).toEqual(undefined);
   });
+
+  it('should change all fragments from one status to another', () => {
+    const ranges = new Ranges();
+    ranges.markAs(10, 20, FragmentStatus.finished);
+    ranges.markAs(22, 28, FragmentStatus.reserved);
+    ranges.markAs(30, 40, FragmentStatus.finished);
+    ranges.markAs(50, 60, FragmentStatus.reserved);
+    ranges.markAs(61, 61, FragmentStatus.finished);
+
+    ranges.changeAll(FragmentStatus.reserved, FragmentStatus.pending);
+    expect(ranges.ranges).toEqual([
+      { start: 0, end: 9, status: FragmentStatus.pending },
+      { start: 10, end: 20, status: FragmentStatus.finished },
+      { start: 21, end: 29, status: FragmentStatus.pending },
+      { start: 30, end: 40, status: FragmentStatus.finished },
+      { start: 41, end: 60, status: FragmentStatus.pending },
+      { start: 61, end: 61, status: FragmentStatus.finished },
+    ]);
+  });
 });

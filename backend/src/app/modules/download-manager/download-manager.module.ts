@@ -3,9 +3,10 @@ import { DownloadGroupsRepository, DownloadItemsRepository } from './repositorie
 import { DownloadManagerService } from './services';
 import { DownloaderFactory } from '../downloader';
 import { PutioModule } from '../putio';
+import { ConfigurationModule } from '../configuration';
 
 @Module({
-  imports: [forwardRef(() => PutioModule)],
+  imports: [ConfigurationModule, forwardRef(() => PutioModule)],
   controllers: [],
   providers: [
     DownloadManagerService,

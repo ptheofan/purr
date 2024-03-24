@@ -91,44 +91,49 @@ export class PutioService {
     }
   }
 
-  async getDownloadLinks(putioIds: number[]): Promise<string[]> {
+  async getDownloadLinks(putioIds: number[], maxAttempts: number = 10): Promise<string[]> {
     if (putioIds.length === 0) {
       throw new RuntimeException('No putio ids provided, cannot get download links.');
     }
 
     const api = await this.getApi();
     let retries = 0;
-    while(retries < 10) {
-      retries++;
-      const createLinkResponse = await this.rateLimitSafeCall(async () => await api.DownloadLinks.Create({ ids: putioIds }));
-      if (createLinkResponse.id) {
-        const getLinkResponse = await this.rateLimitSafeCall(async () => await api.DownloadLinks.Get(createLinkResponse.id));
-        if (!getLinkResponse.links) {
-          this.logger.debug(`Download Links response has no links!`, getLinkResponse);
-          throw new RuntimeException(`Download Links response has no links! ${ putioIds.join(', ') }`);
-        }
-
-        // Putio returns the links in random order, extract the
-        // ids from the url and match them with the putioIds to
-        // return them in the expected order
-        const links = getLinkResponse.links.download_links;
-        const rVal: string[] = [];
-        for (const link of links) {
-          const match = link.match(/\/files\/(\d+)\//);
-          if (match) {
-            const id = parseInt(match[1]);
-            const index = putioIds.indexOf(id);
-            if (index !== -1) {
-              rVal[index] = link;
+    while(retries < maxAttempts) {
+      try {
+        retries++;
+        const createLinkResponse = await this.rateLimitSafeCall(async () => await api.DownloadLinks.Create({ ids: putioIds }));
+        if (createLinkResponse.id) {
+          const getLinkResponse = await this.rateLimitSafeCall(async () => await api.DownloadLinks.Get(createLinkResponse.id));
+          if (getLinkResponse.links) {
+            // Putio returns the links in random order, extract the
+            // ids from the url and match them with the putioIds to
+            // return them in the expected order
+            const links = getLinkResponse.links.download_links;
+            const rVal: string[] = [];
+            for (const link of links) {
+              const match = link.match(/\/files\/(\d+)\//);
+              if (match) {
+                const id = parseInt(match[1]);
+                const index = putioIds.indexOf(id);
+                if (index !== -1) {
+                  rVal[index] = link;
+                }
+              }
             }
+
+            return rVal;
+          } else {
+            this.logger.debug(`Download Links response has no links!`, getLinkResponse);
           }
         }
-
-        return rVal;
+      } catch (err) {
+        this.logger.error(`Error while attempting to get download links for ${ putioIds.join(', ') } (${ err.error_message }) - ${ retries } retries remaining.`);
+        // sleep for 2 seconds before retrying
+        await new Promise((resolve) => setTimeout(resolve, 2000));
       }
     }
 
-    throw new RuntimeException(`Failed to get download links for ${ putioIds.join(', ') }`);
+    throw new RuntimeException(`Failed to get download links for ${ putioIds.join(', ') } after ${ retries } attempts`);
   }
 
   /**
@@ -175,7 +180,7 @@ export class PutioService {
 
     if (file.file_type === 'FOLDER') {
       // I am a folder, create my structure and add all my files and folders
-      let rVal: IVFSNode = {};
+      let rVal: IVFSNode;
       rVal = {
         [file.name]: {
           ['.meta']: JSON.stringify(file),
