@@ -2,6 +2,7 @@ import { SpeedTracker } from '../plugins';
 import { Fragment, Ranges } from './ranges';
 import http from 'http';
 import https from 'https';
+import { Downloader } from './downloader';
 
 export class DownloaderOpts<T> {
   sourceObject: T
@@ -20,7 +21,10 @@ export class DownloaderOpts<T> {
   status?: DownloaderStatus;
   debugOutput?: boolean;
   disableLogging?: boolean;
+  autoRestartCallback?: DownloaderAutoRestartCallback;
 }
+
+export type DownloaderAutoRestartCallback = (downloader: Downloader<any>) => boolean;
 
 export enum DownloaderStatus {
   RUNNING = 'running',
@@ -38,6 +42,8 @@ export enum WorkerState {
 
 export interface DownloaderStats {
   timestamp: number;
+  startedAt?: Date;
+  workersRestartedAt?: Date;
   downloadedBytes: number;
   speedTracker: SpeedTracker;
   ranges: Fragment[];

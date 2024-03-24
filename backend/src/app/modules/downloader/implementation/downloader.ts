@@ -11,7 +11,7 @@ import { SpeedTracker } from '../plugins';
 import { crc32File, prettyBytes } from '../../../helpers';
 import * as path from 'path';
 import {
-  CompletedCallback,
+  CompletedCallback, DownloaderAutoRestartCallback,
   DownloaderOpts,
   DownloaderStats,
   DownloaderStatus,
@@ -76,7 +76,7 @@ export class Downloader<T> implements IDownloader {
   private debugOutput = true;
   private maxRedirects: number = 3;
   private logger: Logger | null;
-  private downloadStartedAt: number;
+  private autoRestartCallback?: DownloaderAutoRestartCallback;
 
   /**
    * Create a downloader
@@ -101,6 +101,7 @@ export class Downloader<T> implements IDownloader {
     downloader.status = opts.status || DownloaderStatus.STOPPED;
     downloader.debugOutput = opts.debugOutput;
     downloader.workersCount = opts.workersCount || 1;
+    downloader.autoRestartCallback = opts.autoRestartCallback;
 
     if (!downloader.httpAgent) {
       downloader.httpAgent = new http.Agent({
@@ -215,6 +216,10 @@ export class Downloader<T> implements IDownloader {
    * Start the download
    */
   async start(): Promise<void> {
+    if (!this.stats.startedAt) {
+      this.stats.startedAt = new Date();
+    }
+
     this.status = DownloaderStatus.RUNNING;
     return new Promise(async (resolve, reject) => {
       while(this.status === DownloaderStatus.RUNNING || this.status === DownloaderStatus.RESTARTING || this.status === DownloaderStatus.STOPPING) {
@@ -311,7 +316,7 @@ export class Downloader<T> implements IDownloader {
     }
 
     this.debugOutput && this.logger.debug(`Starting Workers for ${this.saveAs}`);
-    this.downloadStartedAt = Date.now();
+    this.stats.workersRestartedAt = new Date();
     await Promise.all(workers);
     this.debugOutput && this.logger.debug('All workers completed');
     this.completedHandler();
@@ -370,6 +375,15 @@ export class Downloader<T> implements IDownloader {
     });
   }
 
+  /**
+   * The core loop of a worker. The promise will return when the worker is stopped
+   * If it is stopped because it has nothing more to download it will resolve.
+   * If it is stopped for any other reason it will reject the promise.
+   *
+   * How:
+   * It will request for an available range. If there are no more available
+   * ranges it has nothing more to do and the promise will resolve.
+   */
   protected async worker(id: string): Promise<void> {
     const wStats = this.workers.get(id);
     wStats.state = WorkerState.RUNNING;
@@ -455,19 +469,11 @@ export class Downloader<T> implements IDownloader {
   }
 
   /**
-   * Check if the download speed is too slow and restart the connections
+   * This is a heuristic to determine if the workers should be restarted.
+   * It is based on the time elapsed since the last time the workers were restarted.
    */
   shouldRestartWorkers(): boolean {
-    return false;
-    // // DEBUG: RESET CONNECTIONS 10 sec - restart 10 sec
-    // const now = Date.now();
-    // if (now - this.downloadStartedAt > 10000) {
-    //   this.logger.debug(`[POLICE] ${ prettyTimeOfDay(now) } - ${ prettyTimeOfDay(this.downloadStartedAt) } = ${ prettyTime(now - this.downloadStartedAt) }`);
-    //   // 10 sec elapsed, restart connection
-    //   return true;
-    // }
-    //
-    // return false;
+    return this.autoRestartCallback && this.autoRestartCallback(this) === true;
   }
 
   /**

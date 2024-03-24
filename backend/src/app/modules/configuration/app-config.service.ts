@@ -1,8 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { parseInt } from 'lodash';
 import fs from 'fs';
 import { RuntimeException } from '@nestjs/core/errors/exceptions';
+import { prettyBytes, prettyTime } from '../../helpers';
 
 export type Target = {
   path: string;
@@ -28,10 +29,15 @@ export const EnvKeys = {
   PUTIO_CHECK_CRON_SCHEDULE: 'PUTIO_CHECK_CRON_SCHEDULE',
   PUTIO_CHECK_AT_STARTUP: 'PUTIO_CHECK_AT_STARTUP',
   UI_PROGRESS_UPDATE_INTERVAL: 'UI_PROGRESS_UPDATE_INTERVAL',
+  DOWNLOADER_PERFORMANCE_MONITORING_ENABLED: 'DOWNLOADER_PERFORMANCE_MONITORING_ENABLED',
+  DOWNLOADER_PERFORMANCE_MONITORING_TIME: 'DOWNLOADER_PERFORMANCE_MONITORING_TIME',
+  DOWNLOADER_PERFORMANCE_MONITORING_SPEED: 'DOWNLOADER_PERFORMANCE_MONITORING_SPEED',
 }
 
 @Injectable()
 export class AppConfigService {
+  private readonly logger = new Logger(AppConfigService.name);
+
   private _port: number;
   private _host: string;
   private _putioAuth?: string;
@@ -50,11 +56,50 @@ export class AppConfigService {
   private _concurrentGroups: number;
   private _concurrentSmallFiles: number;
   private _concurrentLargeFiles: number;
+  private _downloaderPerformanceMonitoringEnabled: boolean;
+  private _downloaderPerformanceMonitoringTime: number;
+  private _downloaderPerformanceMonitoringSpeed: number;
 
   constructor(
     private readonly configService: ConfigService,
   ) {
     this.loadEnvConfig();
+
+    // Pretty print the configuration
+    this.logger.log(`Configuration loaded:`);
+    this.logger.log(`  - Port: ${this.port}`);
+    this.logger.log(`  - Host: ${this.host}`);
+    this.logger.log(`  - Put.io Client ID: ${this.putioClientId}`);
+    this.logger.log(`  - Put.io Client Secret: ${this.putioClientSecret.slice(-4).padStart(this.putioClientSecret.length, '*')}`);
+    this.logger.log(`  - Put.io Auth: ${this.putioAuth.slice(-4).padStart(this.putioAuth.length, '*')}`);
+    this.logger.log(`  - Watcher Enabled: ${this.watcherEnabled}`);
+    this.logger.log(`  - Watcher Targets: ${this.watcherTargets.map((t) => t.path).join(', ')}`);
+    this.logger.log(`  - Put.io Watcher Socket: ${this.putioWatcherSocket}`);
+    this.logger.log(`  - Put.io Webhooks Enabled: ${this.putioWebhooksEnabled}`);
+    this.logger.log(`  - Put.io Check Cron Schedule: ${this.putioCheckCronSchedule}`);
+    this.logger.log(`  - Put.io Check At Startup: ${this.putioCheckAtStartup}`);
+    this.logger.log(`  - Downloader Enabled: ${this.downloaderEnabled}`);
+    this.logger.log(`  - Downloader Targets: ${this.downloaderTargets.map((t) => t.path).join(', ')}`);
+    this.logger.log(`  - Downloader Chunk Size: ${prettyBytes(this.downloaderChunkSize)}`);
+    this.logger.log(`  - UI Progress Update Interval: ${prettyTime(this.uiProgressUpdateInterval)}`);
+    this.logger.log(`  - Concurrent Groups: ${this.concurrentGroups}`);
+    this.logger.log(`  - Concurrent Small Files: ${this.concurrentSmallFiles}`);
+    this.logger.log(`  - Concurrent Large Files: ${this.concurrentLargeFiles}`);
+    this.logger.log(`  - Downloader Performance Monitoring Enabled: ${this.downloaderPerformanceMonitoringEnabled}`);
+    this.logger.log(`  - Downloader Performance Monitoring Time: ${prettyTime(this.downloaderPerformanceMonitoringTime)}`);
+    this.logger.log(`  - Downloader Performance Monitoring Speed: ${prettyBytes(this.downloaderPerformanceMonitoringSpeed)}`);
+
+    // Pretty print the upload targets
+    this.logger.log(`  - Watcher Targets:`);
+    this.watcherTargets.forEach((target) => {
+      this.logger.log(`    - ${target.path} (${target.targetId})`);
+    });
+
+    // Pretty print the download targets
+    this.logger.log(`  - Downloader Targets:`);
+    this.downloaderTargets.forEach((target) => {
+      this.logger.log(`    - ${target.path} (${target.targetId})`);
+    });
   }
 
   private loadEnvConfig() {
@@ -79,6 +124,12 @@ export class AppConfigService {
     this._concurrentGroups = this.loadEnvInt(EnvKeys.CONCURRENT_GROUPS, 2);
     this._concurrentSmallFiles = this.loadEnvInt(EnvKeys.CONCURRENT_SMALL_FILES, 8);
     this._concurrentLargeFiles = this.loadEnvInt(EnvKeys.CONCURRENT_LARGE_FILES, 2);
+    this._downloaderPerformanceMonitoringEnabled = this.loadEnvBoolean(EnvKeys.DOWNLOADER_PERFORMANCE_MONITORING_ENABLED, true);
+    this._downloaderPerformanceMonitoringTime = this.loadEnvInt(EnvKeys.DOWNLOADER_PERFORMANCE_MONITORING_TIME, 10);
+    this._downloaderPerformanceMonitoringSpeed = this.loadEnvInt(EnvKeys.DOWNLOADER_PERFORMANCE_MONITORING_SPEED, 0);
+    if (this._downloaderPerformanceMonitoringSpeed === 0) {
+      this._downloaderPerformanceMonitoringSpeed = this._downloaderChunkSize * 0.8;
+    }
 
     // Validate Targets
     this._watcherTargets.forEach((target) => {
@@ -266,5 +317,29 @@ export class AppConfigService {
 
   set concurrentLargeFiles(value: number) {
     this._concurrentLargeFiles = value;
+  }
+
+  get downloaderPerformanceMonitoringEnabled(): boolean {
+    return this._downloaderPerformanceMonitoringEnabled;
+  }
+
+  set downloaderPerformanceMonitoringEnabled(value: boolean) {
+    this._downloaderPerformanceMonitoringEnabled = value;
+  }
+
+  get downloaderPerformanceMonitoringTime(): number {
+    return this._downloaderPerformanceMonitoringTime;
+  }
+
+  set downloaderPerformanceMonitoringTime(value: number) {
+    this._downloaderPerformanceMonitoringTime = value;
+  }
+
+  get downloaderPerformanceMonitoringSpeed(): number {
+    return this._downloaderPerformanceMonitoringSpeed;
+  }
+
+  set downloaderPerformanceMonitoringSpeed(value: number) {
+    this._downloaderPerformanceMonitoringSpeed = value;
   }
 }

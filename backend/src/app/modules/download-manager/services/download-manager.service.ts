@@ -4,7 +4,7 @@ import { DownloadGroupsRepository, DownloadItemsRepository } from '../repositori
 import { getFirstFileOrFolder, getMeta } from '../../../helpers';
 import { Group, Item } from '../entities';
 import { DownloadStatus } from '../enums';
-import { DownloaderFactory } from '../../downloader';
+import { Downloader, DownloaderFactory } from '../../downloader';
 import { Mutex } from 'async-mutex';
 import { PutioService } from '../../putio';
 import { RuntimeException } from '@nestjs/core/errors/exceptions';
@@ -263,6 +263,7 @@ export class DownloadManagerService {
         workersCount: item.size <= this.smallFileThreshold ? 1 : 4,
         fileSize: item.size,
         chunkSize: this.appConfig.downloaderChunkSize,
+        autoRestartCallback: this.downloadAutoRestartCallback.bind(this),
       });
 
       downloader.start()
@@ -311,5 +312,31 @@ export class DownloadManagerService {
 
   async groupExists(id: number) {
     return await this.groupsRepo.find((group) => group.id === id) !== undefined;
+  }
+
+  downloadAutoRestartCallback(downloader: Downloader<any>): boolean {
+    if (!this.appConfig.downloaderPerformanceMonitoringEnabled) {
+      return false;
+    }
+
+    const timeElapsedThreshold = 1000 * this.appConfig.downloaderPerformanceMonitoringTime
+
+    // Time elapsed since last workers restart in ms
+    const timeElapsed = Date.now() - downloader.getStats().workersRestartedAt.getTime();
+
+    // if time elapsed is over timeElapsedThreshold seconds do a speed check
+    if (timeElapsed > timeElapsedThreshold) {
+      // if speed is below downloaderPerformanceMonitoringSpeed then restart the workers
+      // this is to prevent the workers from being stuck on a slow connection
+      // and never finishing the download
+      const queryFrom: Date = new Date(Date.now() - 1000 * 10);
+      const speed = downloader.getStats().speedTracker.query(queryFrom, new Date());
+      const speedThreshold = this.appConfig.downloaderPerformanceMonitoringSpeed;
+      if (speed < speedThreshold) {
+        return true;
+      }
+    }
+
+    return false;
   }
 }
