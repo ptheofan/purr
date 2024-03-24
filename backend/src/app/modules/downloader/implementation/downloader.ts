@@ -8,7 +8,7 @@ import { strict as assert } from 'assert';
 import fsp from 'node:fs/promises';
 import fs from 'fs';
 import { SpeedTracker } from '../plugins';
-import { crc32File, prettyBytes, prettyTime, prettyTimeOfDay } from '../../../helpers';
+import { crc32File, prettyBytes } from '../../../helpers';
 import * as path from 'path';
 import {
   CompletedCallback,
@@ -459,15 +459,15 @@ export class Downloader<T> implements IDownloader {
    */
   shouldRestartWorkers(): boolean {
     return false;
-    // DEBUG: RESET CONNECTIONS 10 sec - restart 10 sec
-    const now = Date.now();
-    if (now - this.downloadStartedAt > 10000) {
-      this.logger.debug(`[POLICE] ${ prettyTimeOfDay(now) } - ${ prettyTimeOfDay(this.downloadStartedAt) } = ${ prettyTime(now - this.downloadStartedAt) }`);
-      // 10 sec elapsed, restart connection
-      return true;
-    }
-
-    return false;
+    // // DEBUG: RESET CONNECTIONS 10 sec - restart 10 sec
+    // const now = Date.now();
+    // if (now - this.downloadStartedAt > 10000) {
+    //   this.logger.debug(`[POLICE] ${ prettyTimeOfDay(now) } - ${ prettyTimeOfDay(this.downloadStartedAt) } = ${ prettyTime(now - this.downloadStartedAt) }`);
+    //   // 10 sec elapsed, restart connection
+    //   return true;
+    // }
+    //
+    // return false;
   }
 
   /**
@@ -515,8 +515,7 @@ export class Downloader<T> implements IDownloader {
             const rangeRemaining = data.range ? data.range.end - data.range.start : 0;
             const percentage = ((data.range.downloadedBytes / rangeRemaining) * 100).toFixed(0);
 
-            // rates.push(`${rate} - ${bytesDownloaded} - ${percentage}%`);
-            rates.push(`${ percentage }%`);
+            rates.push(`${rate} - ${bytesDownloaded} - ${percentage}%`);
           }
         });
         this.logger.debug(`${this.saveAs}`);
