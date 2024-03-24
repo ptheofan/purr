@@ -3,13 +3,9 @@ import { ConfigService } from '@nestjs/config';
 import { parseInt } from 'lodash';
 import fs from 'fs';
 import { RuntimeException } from '@nestjs/core/errors/exceptions';
-import { prettyBytes, prettyTime } from '../../helpers';
+import { prettyBytes, prettyTime } from '../../../helpers';
 import { z, ZodIssue } from 'zod';
-
-export type Target = {
-  path: string;
-  targetId: number;
-}
+import { Target } from '../models';
 
 export const EnvKeys = {
   PORT: 'PORT',
@@ -169,7 +165,7 @@ export class AppConfigService {
     this._downloaderPerformanceMonitoringTime = this.loadEnvInt(EnvKeys.DOWNLOADER_PERFORMANCE_MONITORING_TIME, 10);
     this._downloaderPerformanceMonitoringSpeed = this.loadEnvInt(EnvKeys.DOWNLOADER_PERFORMANCE_MONITORING_SPEED, 0);
     if (this._downloaderPerformanceMonitoringSpeed === 0) {
-      this._downloaderPerformanceMonitoringSpeed = this._downloaderChunkSize * 0.8;
+      this._downloaderPerformanceMonitoringSpeed = Math.floor(this._downloaderChunkSize * 0.8);
     }
 
     // Validate Targets
