@@ -7,6 +7,7 @@ import { DownloadStatus } from '../enums';
 import { DownloaderFactory } from '../../downloader';
 import { Group, Item } from '../entities';
 import { PutioService } from '../../putio';
+import { ConfigurationModule } from '../../configuration';
 
 type CreateItemsOptions = {
   groupId: number;
@@ -69,7 +70,7 @@ describe('DownloadManagerService', () => {
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      imports: [],
+      imports: [ConfigurationModule],
       providers: [
         DownloadManagerService,
         DownloaderFactory,
