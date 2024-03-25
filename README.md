@@ -68,3 +68,34 @@ This is a basic monorepo using npm workspaces. To execute namespace command use 
 # Launch the backend in development mode
 npm run -w backend start:dev
 ```
+
+## Fullstack Development
+Fullstack development environment with hot reload for both frontend and backend. The frontend is built using `react` with `vite` and the backend is built using `nestjs`.
+To start the development environment for fullstack run the following commands.
+```shell
+# Launch backend
+npm -w backend run start:dev
+
+# Launch react
+npm -w client run dev
+```
+Vite is proxying for the backend. It's all accessible on `http://localhost:4000`
+
+
+## GraphQL Query
+We are using https://tanstack.com/query/latest
+
+## Forms
+We are using https://react-hook-form.com/ 
+
+## Validation
+We are using https://zod.dev/
+
+## UI
+We are using https://mui.com/ (material design)
+
+## Routing
+We are using https://reactrouter.com/en/main (react-router-dom)
+
+## Charts
+We are using https://nivo.rocks/

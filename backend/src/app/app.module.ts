@@ -6,7 +6,8 @@ import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo';
 import { GraphQLModule } from '@nestjs/graphql';
 import { ApolloServerPluginLandingPageLocalDefault } from '@apollo/server/plugin/landingPage/default';
 import { ConfigurationModule } from './modules/configuration';
-
+import { join } from 'path';
+import { ServeStaticModule } from '@nestjs/serve-static';
 
 @Module({
   imports: [
@@ -24,6 +25,10 @@ import { ConfigurationModule } from './modules/configuration';
       subscriptions: {
         'graphql-ws': true,
       },
+    }),
+    ServeStaticModule.forRoot({
+      rootPath: join(__dirname, 'client'),
+      exclude: ['/api(.*)', '/graphql(.*)'],
     }),
   ],
   controllers: [AppController],
