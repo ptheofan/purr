@@ -1,6 +1,6 @@
-import { Typography, useTheme } from '@mui/material';
+import { Typography, useMediaQuery, useTheme } from '@mui/material';
 import { tokens } from '../../../theme.ts';
-import { ReactNode, useState } from 'react';
+import { createContext, ReactNode, useContext, useState } from 'react';
 import { Menu, MenuItem, MenuItemStyles, Sidebar, sidebarClasses, SubMenu } from 'react-pro-sidebar';
 import { Link } from 'react-router-dom';
 import HomeOutlinedIcon from '@mui/icons-material/HomeOutlined';
@@ -46,19 +46,49 @@ const StyledSidebarHeader = styled.div`
     }
 `;
 
+interface LeftbarStateContextProps {
+  isCollapsed: boolean;
+  setCollapsed: (value: boolean) => void;
+}
+
+export const LeftbarStateContext = createContext<LeftbarStateContextProps>({
+  isCollapsed: false,
+  setCollapsed: () => {
+  },
+});
+
+interface LeftbarProviderProps {
+  children: ReactNode;
+}
+
+export const LeftbarProvider = ({ children }: LeftbarProviderProps) => {
+  const [isCollapsed, setCollapsed] = useState(false);
+  return (
+    <LeftbarStateContext.Provider value={ { isCollapsed, setCollapsed } }>
+      { children }
+    </LeftbarStateContext.Provider>
+  );
+};
+
+type TSetCollapsed = (value: boolean) => void;
+export const useLeftbar = (): [boolean, TSetCollapsed] => {
+  const { isCollapsed, setCollapsed } = useContext(LeftbarStateContext);
+  return [isCollapsed, setCollapsed];
+};
 
 
 const Leftbar = () => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
-  const [isCollapsed, setCollapsed] = useState(false);
+  const [isCollapsed, setCollapsed] = useLeftbar();
   const [selected, setSelected] = useState('Dashboard');
+  const isBelowBreakpoint = useMediaQuery(theme.breakpoints.down('md'));
 
   const menuItemStyles: MenuItemStyles = {
     root: ({ active }) => ({
       fontSize: '13px',
       fontWeight: 400,
-      borderRight: active ? `3px solid ${ colors.primary[500] }` : 'none',
+      borderRight: isCollapsed ? 0 : (active ? `3px solid ${ colors.primary[500] }` : 'none'),
       borderColor: colors.accent1[500],
       borderWidth: 2,
     }),
@@ -74,14 +104,17 @@ const Leftbar = () => {
       color: active ? colors.accent1[400] : colors.grey[200],
       fontWeight: open || active ? 600 : undefined,
     }),
-    subMenuContent: ({ level }) => ({
+    subMenuContent: {
       backgroundColor: theme.palette.mode === 'dark' ? colors.primary[450] : '#e4e4e4',
-    }),
+    },
   };
 
   return (
     <Sidebar
-      collapsed={ isCollapsed }
+      breakPoint="md"
+      toggled={ isCollapsed }
+      collapsed={ isBelowBreakpoint ? false : isCollapsed }
+      onBackdropClick={ () => setCollapsed(false) }
       rootStyles={ {
         [`.${ sidebarClasses.container }`]: {
           background: `${ colors.primary[400] }`,

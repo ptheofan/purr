@@ -3,7 +3,7 @@ import { CssBaseline, ThemeProvider } from '@mui/material';
 import Topbar from './scenes/global/Topbar.tsx';
 import Dashboard from './scenes/dashboard';
 import { Route, Routes } from 'react-router-dom';
-import Leftbar from './scenes/global/Leftbar.tsx';
+import Leftbar, { LeftbarProvider } from './scenes/global/Leftbar.tsx';
 
 function App() {
   const [theme, colorMode] = useMode();
@@ -11,16 +11,18 @@ function App() {
   return (
     <ColorModeContext.Provider value={ colorMode }>
       <ThemeProvider theme={ theme }>
-        <CssBaseline />
-        <div className="app">
-          <Leftbar />
-          <main className="content">
-            <Topbar />
-            <Routes>
-              <Route path="/" element={<Dashboard />} />
-            </Routes>
-          </main>
-        </div>
+        <CssBaseline/>
+        <LeftbarProvider>
+          <div className="app">
+            <Leftbar/>
+            <main className="content">
+              <Topbar/>
+              <Routes>
+                <Route path="/" element={ <Dashboard/> }/>
+              </Routes>
+            </main>
+          </div>
+        </LeftbarProvider>
       </ThemeProvider>
     </ColorModeContext.Provider>
   );
