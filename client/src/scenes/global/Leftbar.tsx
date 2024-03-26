@@ -1,8 +1,8 @@
 import { Typography, useMediaQuery, useTheme } from '@mui/material';
 import { tokens } from '../../../theme.ts';
-import { createContext, ReactNode, useContext, useState } from 'react';
+import { createContext, ReactNode, useContext, useEffect, useState } from 'react';
 import { Menu, MenuItem, MenuItemStyles, Sidebar, sidebarClasses, SubMenu } from 'react-pro-sidebar';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import HomeOutlinedIcon from '@mui/icons-material/HomeOutlined';
 import styled from '@emotion/styled';
 
@@ -13,6 +13,17 @@ interface ItemProps {
   selected: string;
   setSelected: (title: string) => void;
 }
+
+const navItems = [
+  {
+    title: 'Dashboard',
+    to: '/',
+  },
+  {
+    title: 'Config',
+    to: '/config',
+  },
+];
 
 const Item = ({ title, to, icon, selected, setSelected }: ItemProps) => {
   const theme = useTheme();
@@ -25,9 +36,9 @@ const Item = ({ title, to, icon, selected, setSelected }: ItemProps) => {
       } }
       onClick={ () => setSelected(title) }
       icon={ icon }
+      component={ <Link to={ to } /> }
     >
       <Typography>{ title }</Typography>
-      <Link to={ to }/>
     </MenuItem>
   );
 };
@@ -83,6 +94,15 @@ const Leftbar = () => {
   const [isCollapsed, setCollapsed] = useLeftbar();
   const [selected, setSelected] = useState('Dashboard');
   const isBelowBreakpoint = useMediaQuery(theme.breakpoints.down('md'));
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    // Match the path to navItems and set the selected item
+    const item = navItems.find((item) => item.to === pathname);
+    if (item) {
+      setSelected(item.title);
+    }
+  }, []);
 
   const menuItemStyles: MenuItemStyles = {
     root: ({ active }) => ({
@@ -186,6 +206,13 @@ const Leftbar = () => {
             setSelected={ setSelected }
           />
         </SubMenu>
+        <Item
+          title="Config"
+          to="/config"
+          icon={ <HomeOutlinedIcon/> }
+          selected={ selected }
+          setSelected={ setSelected }
+        />
       </Menu>
     </Sidebar>
   );

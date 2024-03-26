@@ -5,5 +5,9 @@
     "workspaces": [
         "./backend",
         "./client"
-    ]
+    ],
+    "scripts": {
+        "backend": "npm -w backend run start:dev",
+        "client": "npm -w client run dev"
+    }
 }

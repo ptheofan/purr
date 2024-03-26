@@ -4,6 +4,7 @@ import Topbar from './scenes/global/Topbar.tsx';
 import Dashboard from './scenes/dashboard';
 import { Route, Routes } from 'react-router-dom';
 import Leftbar, { LeftbarProvider } from './scenes/global/Leftbar.tsx';
+import Config from './scenes/config';
 
 function App() {
   const [theme, colorMode] = useMode();
@@ -19,6 +20,7 @@ function App() {
               <Topbar/>
               <Routes>
                 <Route path="/" element={ <Dashboard/> }/>
+                <Route path="/config" element={ <Config/> }/>
               </Routes>
             </main>
           </div>
