@@ -3,7 +3,7 @@
     font-style: italic;
     font-weight: 200 900;
     font-display: swap;
-    src: url(/assets/SourceSans3-Italic-VariableFont_wght.ttf) format('ttf');
+    src: url(../../assets/SourceSans3-Italic-VariableFont_wght.ttf) format('ttf');
 }
 
 @font-face {
@@ -11,13 +11,13 @@
     font-style: normal;
     font-weight: 200 900;
     font-display: swap;
-    src: url(/assets/SourceSans3-VariableFont_wght.ttf) format('ttf');
+    src: url(../../assets/SourceSans3-VariableFont_wght.ttf) format('ttf');
 }
 
 html,
 body,
 #root,
-.app
+.app,
 .content {
     height: 100%;
     width: 100%;
