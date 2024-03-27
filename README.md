@@ -92,7 +92,7 @@ We are using
 ### Generate Types
 ```shell
 # One time run
-npm run client codegen
+npm run codegen
 
 # Watch mode
 npm run codegen:watch
