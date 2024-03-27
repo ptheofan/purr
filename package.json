@@ -8,6 +8,9 @@
     ],
     "scripts": {
         "backend": "npm -w backend run start:dev",
-        "client": "npm -w client run dev"
+        "backend:debug": "npm -w backend run start:debug",
+        "client": "npm -w client run dev",
+        "codegen": "npm run -w client codegen",
+        "codegen:watch": "npm run -w client codegen:watch"
     }
 }

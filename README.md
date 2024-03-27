@@ -66,7 +66,10 @@ DOWNLOADERS=/my/downloads:123;/my/downloads:456
 This is a basic monorepo using npm workspaces. To execute namespace command use the following syntax
 ```shell
 # Launch the backend in development mode
-npm run -w backend start:dev
+npm run backend
+
+# Debug mode
+npm run backend:debug
 ```
 
 ## Fullstack Development
@@ -74,16 +77,26 @@ Fullstack development environment with hot reload for both frontend and backend.
 To start the development environment for fullstack run the following commands.
 ```shell
 # Launch backend
-npm -w backend run start:dev
+npm run backend
 
 # Launch react
-npm -w client run dev
+npm run client
 ```
 Vite is proxying for the backend. It's all accessible on `http://localhost:4000`
 
 
 ## GraphQL Query
-We are using https://tanstack.com/query/latest
+We are using 
+- GraphQL Codegen (https://the-guild.dev/graphql/codegen/docs/guides/react-vue)
+- Apollo Client (https://www.apollographql.com/docs/react/)
+### Generate Types
+```shell
+# One time run
+npm run client codegen
+
+# Watch mode
+npm run codegen:watch
+```
 
 ## Forms
 We are using https://react-hook-form.com/ 
