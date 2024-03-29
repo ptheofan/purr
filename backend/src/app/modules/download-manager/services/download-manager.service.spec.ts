@@ -7,8 +7,9 @@ import { DownloadStatus } from '../enums';
 import { DownloaderFactory } from '../../downloader';
 import { Group, Item } from '../entities';
 import { PutioService } from '../../putio';
-import { ConfigurationModule } from '../../configuration';
+import { AppConfigService } from '../../configuration';
 import { GroupState } from '../enums/group-state.enum';
+import { ConfigService } from '@nestjs/config';
 
 type CreateItemsOptions = {
   groupId: number;
@@ -76,8 +77,10 @@ describe('DownloadManagerService', () => {
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      imports: [ConfigurationModule],
+      imports: [],
       providers: [
+        ConfigService,
+        AppConfigService,
         DownloadManagerService,
         DownloaderFactory,
         DownloadGroupsRepository,

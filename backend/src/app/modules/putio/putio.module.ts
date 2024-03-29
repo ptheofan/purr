@@ -8,7 +8,10 @@ import { PutioScheduledWatcherService } from './services/putio-scheduled-watcher
 import { PutioOnDemandScannerService } from './services/putio-on-demand-scanner.service';
 
 @Module({
-  imports: [forwardRef(() => ConfigurationModule), forwardRef(() => DownloadManagerModule)],
+  imports: [
+    forwardRef(() => ConfigurationModule),
+    forwardRef(() => DownloadManagerModule)
+  ],
   controllers: [WebhooksController],
   providers: [PutioService, PutioSocketWatcherService, PutioScheduledWatcherService, PutioOnDemandScannerService, ],
   exports: [PutioService, PutioSocketWatcherService, PutioScheduledWatcherService, PutioOnDemandScannerService],
