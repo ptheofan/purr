@@ -18,10 +18,10 @@ import { ServeStaticModule } from '@nestjs/serve-static';
     ScheduleModule.forRoot(),
     GraphQLModule.forRoot<ApolloDriverConfig>({
       driver: ApolloDriver,
-      autoSchemaFile: true,
       sortSchema: true,
       playground: false,
       plugins: [ApolloServerPluginLandingPageLocalDefault()],
+      autoSchemaFile: join(process.cwd(), 'src/schema.gql'),
       subscriptions: {
         'graphql-ws': true,
       },

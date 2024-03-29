@@ -29,7 +29,7 @@ export type AppConfig = {
   downloaderPerformanceMonitoringEnabled: Scalars['Boolean']['output'];
   downloaderPerformanceMonitoringSpeed: Scalars['Int']['output'];
   downloaderPerformanceMonitoringTime: Scalars['Int']['output'];
-  downloaderTargets: Array<Target>;
+  downloaderTargets: Array<TargetModel>;
   host: Scalars['String']['output'];
   port: Scalars['Int']['output'];
   putioAuth: Scalars['String']['output'];
@@ -41,7 +41,7 @@ export type AppConfig = {
   putioWebhooksEnabled: Scalars['Int']['output'];
   uiProgressUpdateInterval: Scalars['Int']['output'];
   watcherEnabled: Scalars['Boolean']['output'];
-  watcherTargets: Array<Target>;
+  watcherTargets: Array<TargetModel>;
 };
 
 export type CreatePutioDownloadResultDto = {
@@ -122,16 +122,17 @@ export type Subscription = {
   groupStateChanged: GroupStateChangedDto;
 };
 
-export type Target = {
-  __typename?: 'Target';
+export type TargetModel = {
+  __typename?: 'TargetModel';
   path: Scalars['String']['output'];
   targetId: Scalars['Int']['output'];
+  targetPath?: Maybe<Scalars['String']['output']>;
 };
 
 export type AppConfigQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type AppConfigQuery = { __typename?: 'Query', appConfig: { __typename?: 'AppConfig', concurrentGroups: number, concurrentLargeFiles: number, concurrentSmallFiles: number, downloaderChunkSize: number, downloaderEnabled: boolean, downloaderPerformanceMonitoringEnabled: boolean, downloaderPerformanceMonitoringSpeed: number, downloaderPerformanceMonitoringTime: number, host: string, port: number, putioAuth: string, putioCheckAtStartup: number, putioCheckCronSchedule?: string | null, putioClientId: number, putioClientSecret: string, putioWatcherSocket: number, putioWebhooksEnabled: number, uiProgressUpdateInterval: number, watcherEnabled: boolean, downloaderTargets: Array<{ __typename?: 'Target', path: string, targetId: number }>, watcherTargets: Array<{ __typename?: 'Target', path: string, targetId: number }> } };
+export type AppConfigQuery = { __typename?: 'Query', appConfig: { __typename?: 'AppConfig', concurrentGroups: number, concurrentLargeFiles: number, concurrentSmallFiles: number, downloaderChunkSize: number, downloaderEnabled: boolean, downloaderPerformanceMonitoringEnabled: boolean, downloaderPerformanceMonitoringSpeed: number, downloaderPerformanceMonitoringTime: number, host: string, port: number, putioAuth: string, putioCheckAtStartup: number, putioCheckCronSchedule?: string | null, putioClientId: number, putioClientSecret: string, putioWatcherSocket: number, putioWebhooksEnabled: number, uiProgressUpdateInterval: number, watcherEnabled: boolean, downloaderTargets: Array<{ __typename?: 'TargetModel', path: string, targetId: number, targetPath?: string | null }>, watcherTargets: Array<{ __typename?: 'TargetModel', path: string, targetId: number, targetPath?: string | null }> } };
 
 
-export const AppConfigDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"AppConfig"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"appConfig"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"concurrentGroups"}},{"kind":"Field","name":{"kind":"Name","value":"concurrentLargeFiles"}},{"kind":"Field","name":{"kind":"Name","value":"concurrentSmallFiles"}},{"kind":"Field","name":{"kind":"Name","value":"downloaderChunkSize"}},{"kind":"Field","name":{"kind":"Name","value":"downloaderEnabled"}},{"kind":"Field","name":{"kind":"Name","value":"downloaderPerformanceMonitoringEnabled"}},{"kind":"Field","name":{"kind":"Name","value":"downloaderPerformanceMonitoringSpeed"}},{"kind":"Field","name":{"kind":"Name","value":"downloaderPerformanceMonitoringTime"}},{"kind":"Field","name":{"kind":"Name","value":"downloaderTargets"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"path"}},{"kind":"Field","name":{"kind":"Name","value":"targetId"}}]}},{"kind":"Field","name":{"kind":"Name","value":"host"}},{"kind":"Field","name":{"kind":"Name","value":"port"}},{"kind":"Field","name":{"kind":"Name","value":"putioAuth"}},{"kind":"Field","name":{"kind":"Name","value":"putioCheckAtStartup"}},{"kind":"Field","name":{"kind":"Name","value":"putioCheckCronSchedule"}},{"kind":"Field","name":{"kind":"Name","value":"putioClientId"}},{"kind":"Field","name":{"kind":"Name","value":"putioClientSecret"}},{"kind":"Field","name":{"kind":"Name","value":"putioWatcherSocket"}},{"kind":"Field","name":{"kind":"Name","value":"putioWebhooksEnabled"}},{"kind":"Field","name":{"kind":"Name","value":"uiProgressUpdateInterval"}},{"kind":"Field","name":{"kind":"Name","value":"watcherEnabled"}},{"kind":"Field","name":{"kind":"Name","value":"watcherTargets"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"path"}},{"kind":"Field","name":{"kind":"Name","value":"targetId"}}]}}]}}]}}]} as unknown as DocumentNode<AppConfigQuery, AppConfigQueryVariables>;
+export const AppConfigDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"AppConfig"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"appConfig"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"concurrentGroups"}},{"kind":"Field","name":{"kind":"Name","value":"concurrentLargeFiles"}},{"kind":"Field","name":{"kind":"Name","value":"concurrentSmallFiles"}},{"kind":"Field","name":{"kind":"Name","value":"downloaderChunkSize"}},{"kind":"Field","name":{"kind":"Name","value":"downloaderEnabled"}},{"kind":"Field","name":{"kind":"Name","value":"downloaderPerformanceMonitoringEnabled"}},{"kind":"Field","name":{"kind":"Name","value":"downloaderPerformanceMonitoringSpeed"}},{"kind":"Field","name":{"kind":"Name","value":"downloaderPerformanceMonitoringTime"}},{"kind":"Field","name":{"kind":"Name","value":"downloaderTargets"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"path"}},{"kind":"Field","name":{"kind":"Name","value":"targetId"}},{"kind":"Field","name":{"kind":"Name","value":"targetPath"}}]}},{"kind":"Field","name":{"kind":"Name","value":"host"}},{"kind":"Field","name":{"kind":"Name","value":"port"}},{"kind":"Field","name":{"kind":"Name","value":"putioAuth"}},{"kind":"Field","name":{"kind":"Name","value":"putioCheckAtStartup"}},{"kind":"Field","name":{"kind":"Name","value":"putioCheckCronSchedule"}},{"kind":"Field","name":{"kind":"Name","value":"putioClientId"}},{"kind":"Field","name":{"kind":"Name","value":"putioClientSecret"}},{"kind":"Field","name":{"kind":"Name","value":"putioWatcherSocket"}},{"kind":"Field","name":{"kind":"Name","value":"putioWebhooksEnabled"}},{"kind":"Field","name":{"kind":"Name","value":"uiProgressUpdateInterval"}},{"kind":"Field","name":{"kind":"Name","value":"watcherEnabled"}},{"kind":"Field","name":{"kind":"Name","value":"watcherTargets"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"path"}},{"kind":"Field","name":{"kind":"Name","value":"targetId"}},{"kind":"Field","name":{"kind":"Name","value":"targetPath"}}]}}]}}]}}]} as unknown as DocumentNode<AppConfigQuery, AppConfigQueryVariables>;

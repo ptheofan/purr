@@ -1,5 +1,5 @@
 import { Field, Int, ObjectType } from '@nestjs/graphql';
-import { Target } from './target.model';
+import { TargetModel } from './target.model';
 
 @ObjectType('AppConfig', { description: 'The app configuration.' })
 export class AppConfigModel {
@@ -21,14 +21,14 @@ export class AppConfigModel {
   @Field(() => Boolean)
   watcherEnabled: boolean;
 
-  @Field(() => [Target])
-  watcherTargets: Target[];
+  @Field(() => [TargetModel])
+  watcherTargets: TargetModel[];
 
   @Field(() => Boolean)
   downloaderEnabled: boolean;
 
-  @Field(() => [Target])
-  downloaderTargets: Target[];
+  @Field(() => [TargetModel])
+  downloaderTargets: TargetModel[];
 
   @Field(() => Int)
   downloaderChunkSize: number;

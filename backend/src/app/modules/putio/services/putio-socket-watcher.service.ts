@@ -1,7 +1,7 @@
 import { forwardRef, Inject, Injectable, Logger } from '@nestjs/common';
 import { PutioService } from './putio.service';
 import { createPutioSocketClient, EVENT_TYPE, PutioSocketClient } from '@putdotio/socket-client';
-import { AppConfigService, Target } from '../../configuration';
+import { AppConfigService, TargetModel } from '../../configuration';
 import { DownloadManagerService } from '../../download-manager/services';
 
 @Injectable()
@@ -65,7 +65,7 @@ export class PutioSocketWatcherService {
   /**
    * Get the downloader target record that corresponds to the id (if any)
    */
-  getTargetById(id: number): Target | null {
+  getTargetById(id: number): TargetModel | null {
     return this.config.downloaderTargets.find((t) => t.targetId === id);
   }
 

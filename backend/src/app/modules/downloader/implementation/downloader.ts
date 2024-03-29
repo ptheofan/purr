@@ -511,7 +511,7 @@ export class Downloader<T> implements IDownloader {
         const from = new Date(Date.now() - 10000);  // last 10 seconds
         this.workers.forEach((data) => {
           // Download rate of worker
-          const rate = prettyBytes(data.speedTracker.query(from, now), true);
+          const rate = `${prettyBytes(data.speedTracker.query(from, now))}/s`;
 
           // Downloaded bytes of worker (total in his lifetime)
           const bytesDownloaded = prettyBytes(data.downloadedBytes);
@@ -525,7 +525,7 @@ export class Downloader<T> implements IDownloader {
           }
         });
         this.logger.debug(`${this.saveAs}`);
-        this.logger.debug(`${prettyBytes(this.stats.speedTracker.query(from, now), true)} (${rates.join(' | ')})`);
+        this.logger.debug(`${prettyBytes(this.stats.speedTracker.query(from, now))}/s (${rates.join(' | ')})`);
         for (let i=0; i < this.ranges.ranges.length; i++) {
           const range = this.ranges.ranges[i];
           this.logger.debug(`range-${i}: [${range.status}] ${range.start}-${range.end}`);

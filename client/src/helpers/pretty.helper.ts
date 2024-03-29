@@ -21,6 +21,10 @@ export function prettyTime(ms: number): string {
     unitIndex++;
   }
 
+  // if trailing zeros, remove them
+  if (time % 1 === 0) {
+    return `${Math.floor(time)} ${units[unitIndex]}`;
+  }
   return `${time.toFixed(2)} ${units[unitIndex]}`;
 }
 

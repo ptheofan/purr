@@ -1,10 +1,10 @@
 {
-    "name": "@purrito/monorepo",
+    "name": "@purr/monorepo",
     "version": "1.0.0",
     "private": true,
     "workspaces": [
-        "./backend",
-        "./client"
+        "backend",
+        "client"
     ],
     "scripts": {
         "backend": "npm -w backend run start:dev",

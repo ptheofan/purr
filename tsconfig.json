@@ -1,18 +1,21 @@
 {
+  "compilerOptions": {
+    "paths": {
+      "@purr/backend/*": ["backend/src/*"],
+      "@purr/client/*": ["client/src/*"],
+    }
+  },
   "exclude": [
-    "packages/**/node_modules/**",
-    "packages/**/tests/**",
-    "packages/**/dist/**"
+    "backend/node_modules/**",
+    "backend/dist/**",
+    "client/node_modules/**",
   ],
   "references": [
     {
       "path": "backend"
     },
     {
-      "path": "packages/storybook"
-    },
-    {
       "path": "client"
-    }
+    },
   ],
 }

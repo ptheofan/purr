@@ -1,12 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { parseInt } from 'lodash';
 import fs from 'fs';
 import { RuntimeException } from '@nestjs/core/errors/exceptions';
-import { prettyBytes, prettyTime } from '../../../helpers';
 import { z, ZodIssue } from 'zod';
-import { Target } from '../models';
+import { TargetModel } from '../models';
 import * as process from 'process';
+import { prettyTime, prettyBytes } from '../../../helpers';
 
 export const EnvKeys = {
   PORT: 'PORT',
@@ -89,13 +88,13 @@ export class AppConfigService {
   private _putioClientId?: number;
   private _putioClientSecret?: string;
   private _watcherEnabled?: boolean;
-  private _watcherTargets?: Target[];
+  private _watcherTargets?: TargetModel[];
   private _putioWatcherSocket?: boolean;
   private _putioWebhooksEnabled?: boolean;
   private _putioCheckCronSchedule?: string;
   private _putioCheckAtStartup: boolean;
   private _downloaderEnabled?: boolean;
-  private _downloaderTargets?: Target[];
+  private _downloaderTargets?: TargetModel[];
   private _downloaderChunkSize: number;
   private _uiProgressUpdateInterval: number;
   private _concurrentGroups: number;
@@ -218,7 +217,7 @@ export class AppConfigService {
 
   }
 
-  private loadEnvTargets(name: string): Target[] {
+  private loadEnvTargets(name: string): TargetModel[] {
     const value = this.configService.get(name);
     if (!value) {
       return [];
@@ -282,11 +281,11 @@ export class AppConfigService {
     this._watcherEnabled = value;
   }
 
-  get watcherTargets(): Target[] {
+  get watcherTargets(): TargetModel[] {
     return this._watcherTargets;
   }
 
-  set watcherTargets(value: Target[]) {
+  set watcherTargets(value: TargetModel[]) {
     this._watcherTargets = value;
   }
 
@@ -330,11 +329,11 @@ export class AppConfigService {
     this._downloaderEnabled = value;
   }
 
-  get downloaderTargets(): Target[] {
+  get downloaderTargets(): TargetModel[] {
     return this._downloaderTargets;
   }
 
-  set downloaderTargets(value: Target[]) {
+  set downloaderTargets(value: TargetModel[]) {
     this._downloaderTargets = value;
   }
 

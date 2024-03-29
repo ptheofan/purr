@@ -50,6 +50,42 @@ export class PutioService {
     }
   }
 
+  async getPathsOfFiles(ids: number[]): Promise<{ id: number, path: string }[]> {
+    const uniqueIds = Array.from(new Set(ids));
+    const files: { [id: number]: IFile } = {};
+
+    while(uniqueIds.length > 0) {
+      const id = uniqueIds.pop();
+      const file = await this.getFile(id);
+      if (file) {
+        files[id] = file;
+        if (file.parent_id && !files[file.parent_id]) {
+          uniqueIds.push(file.parent_id);
+        }
+      }
+    }
+
+    const rVal: { id: number, path: string }[] = [];
+    for (const id of ids) {
+      const file = files[id];
+      if (file) {
+        const path = [];
+        let currentFile = file;
+        while(currentFile) {
+          path.unshift(currentFile.name);
+          currentFile = files[currentFile.parent_id];
+        }
+
+        rVal.push({
+          id,
+          path: `/${path.join('/')}`,
+        });
+      }
+    }
+
+    return rVal;
+  }
+
   async rateLimitSafeCall<T>(apiCall: () => Promise<IPutioAPIClientResponse<T>>): Promise<T> {
     let attempts = 0;
     // Try 100 times to get a successful response
