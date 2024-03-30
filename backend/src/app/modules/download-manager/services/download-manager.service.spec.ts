@@ -10,6 +10,8 @@ import { PutioService } from '../../putio';
 import { AppConfigService } from '../../configuration';
 import { GroupState } from '../enums/group-state.enum';
 import { ConfigService } from '@nestjs/config';
+import { PublisherService } from '../../subscriptions/services';
+import * as process from 'process';
 
 type CreateItemsOptions = {
   groupId: number;
@@ -70,6 +72,7 @@ describe('DownloadManagerService', () => {
   process.env.PUTIO_CLIENT_ID = '1234';
   process.env.PUTIO_CLIENT_SECRET = 'xxxx';
   process.env.PUTIO_AUTH = 'xxxx';
+  process.env.UI_PROGRESS_UPDATE_INTERVAL = '0';
 
   let service: DownloadManagerService;
   let groupsRepo: DownloadGroupsRepository;
@@ -86,10 +89,16 @@ describe('DownloadManagerService', () => {
         DownloadGroupsRepository,
         DownloadItemsRepository,
         {
+          provide: PublisherService,
+          useValue: {
+            downloadManagerStats: jest.fn(),
+          },
+        },
+        {
           provide: PutioService,
           useValue: {
             getVolume: jest.fn().mockResolvedValue(new Volume()),
-          }
+          },
         },
       ],
     }).compile();

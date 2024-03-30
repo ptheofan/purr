@@ -76,6 +76,10 @@ export class DownloadManagerService {
       clearTimeout(this.progressUpdateIntervalId);
     }
 
+    if (this.appConfig.uiProgressUpdateInterval === 0) {
+      return;
+    }
+
     this.progressUpdateIntervalId = setTimeout(async () => {
       await this.publishDownloadManagerStats();
       this.configureUpdateInterval();
