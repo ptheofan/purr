@@ -4,7 +4,7 @@ import { DownloadGroupsRepository, DownloadItemsRepository } from '../repositori
 import { crc32File, getFirstFileOrFolder, getMeta } from '../../../helpers';
 import { Group, Item } from '../entities';
 import { DownloadStatus } from '../enums';
-import { Downloader, DownloaderFactory } from '../../downloader';
+import { Downloader, DownloaderFactory, DownloaderStats } from '../../downloader';
 import { Mutex } from 'async-mutex';
 import { PutioService } from '../../putio';
 import { RuntimeException } from '@nestjs/core/errors/exceptions';
@@ -12,6 +12,8 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { AppConfigService } from '../../configuration';
 import { GroupState } from '../enums/group-state.enum';
+import { SpeedTracker } from '../../../stats';
+import { PublisherService } from '../../subscriptions/services';
 
 export interface IDownloadManagerSettings {
   concurrentLargeFiles?: number;
@@ -27,6 +29,11 @@ export type TAddVolumeResponse = {
 
 const startMutex = new Mutex();
 
+interface ITotalBytesDownloaded {
+  since: Date;
+  bytes: number;
+}
+
 @Injectable()
 export class DownloadManagerService {
   private readonly logger = new Logger(DownloadManagerService.name);
@@ -34,6 +41,11 @@ export class DownloadManagerService {
   private concurrentSmallFiles: number;
   private concurrentGroups: number;
   private smallFileThreshold: number = 1024 * 1024 * 10; // 10MB
+  private histogramDuration = 1000 * 60 * 60 * 2; // 2 hours
+  private speedQueryDuration = 1000 * 30; // 30 seconds
+  private totalBytesDownloaded: ITotalBytesDownloaded;
+  private speedTracker: SpeedTracker;
+  private progressUpdateIntervalId: NodeJS.Timeout | undefined;
 
   constructor(
     private readonly groupsRepo: DownloadGroupsRepository,
@@ -41,10 +53,57 @@ export class DownloadManagerService {
     private readonly downloaderFactory: DownloaderFactory,
     private readonly putioService: PutioService,
     private readonly appConfig: AppConfigService,
+    private readonly pubService: PublisherService,
   ) {
+    this.totalBytesDownloaded = {
+      since: new Date(),
+      bytes: 0,
+    };
     this.concurrentGroups = appConfig.concurrentGroups;
     this.concurrentSmallFiles = appConfig.concurrentSmallFiles;
     this.concurrentLargeFiles = appConfig.concurrentLargeFiles;
+    this.speedTracker = new SpeedTracker();
+    this.configureUpdateInterval();
+  }
+
+  /**
+   * Configure the interval to publish to the UI the download manager statistics
+   * Internally it uses timeout. This ensures that in case of high load, if
+   * some intervals are missed it will publish max once per interval.
+   */
+  configureUpdateInterval() {
+    if (this.progressUpdateIntervalId) {
+      clearTimeout(this.progressUpdateIntervalId);
+    }
+
+    this.progressUpdateIntervalId = setTimeout(async () => {
+      await this.publishDownloadManagerStats();
+      this.configureUpdateInterval();
+    }, Math.max(this.appConfig.uiProgressUpdateInterval, 1000));
+  }
+
+  async publishDownloadManagerStats() {
+    const now = new Date();
+    const granularity = 60;
+    const histo = this.speedTracker.histogram(new Date(now.getTime() - this.histogramDuration), now, granularity);
+
+    // Round histo.startEpoch to the earliest of granularity seconds
+    // The histo.endEpoch is not rounded, we want to show the most recent data until right now
+    const histoGranularStart = Math.floor(histo.startEpoch / granularity) * granularity;
+
+    const histogramDto = histo.endEpoch === 0 ? null : {
+      since: new Date(histoGranularStart * 1000),
+      until: new Date(histo.endEpoch * 1000),
+      granularity,
+      values: histo.values,
+    };
+
+    await this.pubService.downloadManagerStats({
+      startedAt: this.totalBytesDownloaded.since,
+      lifetimeBytes: this.totalBytesDownloaded.bytes,
+      speed: Math.round(this.speedTracker.query(new Date(now.getTime() - this.speedQueryDuration), now)),
+      histogram: histogramDto,
+    });
   }
 
   setSettings(settings: IDownloadManagerSettings) {
@@ -165,6 +224,8 @@ export class DownloadManagerService {
           // If the file exists and the CRC32 matches, mark the item as completed
           await this.itemsRepo.update(item.id, { status: DownloadStatus.Completed });
           itemsCompletedCounter++;
+          // Delete the file from put.io
+          await this.putioService.deleteFile(item.id);
         }
       }
     }
@@ -320,8 +381,8 @@ export class DownloadManagerService {
         fileSize: item.size,
         chunkSize: this.appConfig.downloaderChunkSize,
         autoRestartCallback: this.downloadAutoRestartCallback.bind(this),
-        progressCallback: undefined,
-        completedCallback: undefined,
+        progressCallback: this.progressCallback.bind(this),
+        completedCallback: this.completedCallback.bind(this),
         errorCallback: undefined,
       });
 
@@ -369,6 +430,11 @@ export class DownloadManagerService {
       if (groupItems.length === completedItems.length) {
         await this.groupsRepo.update(group.id, { status: DownloadStatus.Completed });
       }
+    } else if (status === DownloadStatus.Pending) {
+      // if group is not downloading or pending, set it to pending
+      if (group.status !== DownloadStatus.Downloading && group.status !== DownloadStatus.Pending) {
+        await this.groupsRepo.update(group.id, { status: DownloadStatus.Pending });
+      }
     }
   }
 
@@ -402,8 +468,27 @@ export class DownloadManagerService {
     return false;
   }
 
+  progressCallback(downloader: Downloader<Item>, stats: DownloaderStats, bytesSinceLastCall: number) {
+    // Update download manager statistics
+    this.speedTracker.update(Date.now(), bytesSinceLastCall);
+    if (this.totalBytesDownloaded) {
+      this.totalBytesDownloaded.bytes += bytesSinceLastCall;
+    }
+  }
+
   async completedCallback(downloader: Downloader<Item>) {
+    const item = downloader.sourceObject;
     // CRC32 check
+    const fileCRC = await crc32File(downloader.saveAs);
+    if (fileCRC !== item['crc32']) {
+      // CRC32 check failed, re-download the item
+      this.logger.log(`CRC Check: Failed for ${ item.name }`);
+      await this.updateItemStatus(item.id, DownloadStatus.Pending);
+      return;
+    }
+
+    // Update the item status to completed
+    await this.updateItemStatus(item.id, DownloadStatus.Completed);
 
     // Delete the file from put.io
     await this.putioService.deleteFile(downloader.sourceObject.id);

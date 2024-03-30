@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { PUB_SUB } from '../../helpers';
 import { PubSub } from 'graphql-subscriptions';
-import { TriggerService } from './services';
+import { PublisherService } from './services';
 
 @Module({
   imports: [],
@@ -11,8 +11,8 @@ import { TriggerService } from './services';
       provide: PUB_SUB,
       useValue: new PubSub(),
     },
-    TriggerService,
+    PublisherService,
   ],
-  exports: [TriggerService, PUB_SUB],
+  exports: [PublisherService, PUB_SUB],
 })
 export class SubscriptionsModule {}

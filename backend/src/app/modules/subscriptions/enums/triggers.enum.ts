@@ -1,3 +1,4 @@
 export enum Triggers {
-  groupStateChanged = 'groupStateChanged'
+  groupStateChanged = 'groupStateChanged',
+  downloadManagerStats = 'downloadManagerStats',
 }

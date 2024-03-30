@@ -1,8 +1,8 @@
-import { SpeedTracker } from '../plugins';
 import { Fragment, Ranges } from './ranges';
 import http from 'http';
 import https from 'https';
 import { Downloader } from './downloader';
+import { SpeedTracker } from '../../../stats';
 
 export class DownloaderOpts<T> {
   sourceObject: T
@@ -65,7 +65,7 @@ export interface WorkerStats {
   range?: RangeStats;
 }
 
-export type ProgressCallback = (downloader: IDownloader, stats: DownloaderStats) => void;
+export type ProgressCallback = (downloader: IDownloader, stats: DownloaderStats, bytesSinceLastCall: number) => void;
 export type CompletedCallback = (downloader: IDownloader) => Promise<void> | void;
 export type GetResumeDataCallback = (downloader: IDownloader) => Promise<Ranges | undefined>;
 export type ErrorCallback = (downloader: IDownloader, error: Error) => void;

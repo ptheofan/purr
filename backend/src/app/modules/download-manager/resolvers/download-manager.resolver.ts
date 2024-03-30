@@ -5,11 +5,11 @@ import { DownloadGroupsRepository } from '../repositories';
 import { CreatePutioDownloadResultDto } from '../dtos';
 import { AppConfigService } from '../../configuration';
 import { PUB_SUB, restrictFolderToRoot } from '../../../helpers';
-import { TriggerService } from '../../subscriptions/services';
+import { PublisherService } from '../../subscriptions/services';
 import { Triggers } from '../../subscriptions/enums';
 import { Inject } from '@nestjs/common';
 import { PubSub } from 'graphql-subscriptions';
-import { GroupStateChangedDto } from '../../subscriptions/dtos';
+import { GroupStateChangedDto, DownloadManagerStatsDto } from '../../subscriptions/dtos';
 
 @Resolver()
 export class DownloadManagerResolver {
@@ -18,7 +18,7 @@ export class DownloadManagerResolver {
     private readonly putioService: PutioService,
     private readonly downloadManagerService: DownloadManagerService,
     private readonly groupRepo: DownloadGroupsRepository,
-    private readonly triggers: TriggerService,
+    private readonly triggers: PublisherService,
     @Inject(PUB_SUB) private readonly pubSub: PubSub,
   ) {
   }
@@ -78,5 +78,10 @@ export class DownloadManagerResolver {
   @Subscription(() => GroupStateChangedDto)
   groupStateChanged() {
     return this.pubSub.asyncIterator(Triggers.groupStateChanged);
+  }
+
+  @Subscription(() => DownloadManagerStatsDto)
+  downloadManagerStats() {
+    return this.pubSub.asyncIterator(Triggers.downloadManagerStats);
   }
 }

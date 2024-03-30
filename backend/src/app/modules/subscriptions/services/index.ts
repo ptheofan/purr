@@ -1,1 +1,1 @@
-export * from './trigger.service';
+export * from './publisher.service';

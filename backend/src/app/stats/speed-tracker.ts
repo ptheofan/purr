@@ -1,9 +1,19 @@
 export type Histogram = {
+  // Unix timestamp in seconds
   startEpoch: number;
+  // Unix timestamp in seconds
   endEpoch: number;
+  // Speed values in bytes per second since the startEpoch until the endEpoch
   values: number[];
 }
 
+/**
+ * Will keep track of speed data and provide methods to query the speed between two dates
+ * The speed is calculated as the total data downloaded between two dates divided by the time between the two dates
+ * The speed is returned in bytes per second
+ * The data is stored in a map where the key is the epoch and the value is the data downloaded in that epoch
+ * The epoch is calculated as the timestamp divided by 1000ms (time resolution of 1s)
+ */
 export class SpeedTracker {
   private readonly data: Map<number, number> = new Map();
   private totalData = 0;
@@ -69,7 +79,7 @@ export class SpeedTracker {
    * If until is not provided, the speed will be calculated until the last data point
    * The histogram will be returned as an object with the start and end dates and an array of speeds
    */
-  histogram(from?: Date, until?: Date): Histogram {
+  histogram(from?: Date, until?: Date, granularity: number = 1): Histogram {
     // Get the epochs as array from start to end
     const { firstEpoch, lastEpoch } = this.getStartEndEpochs(from, until);
 
@@ -78,13 +88,14 @@ export class SpeedTracker {
     }
 
     // extract the data from the map
-    const data = [];
+    const data: number[] = [];
     let epoch = firstEpoch;
     while (epoch <= lastEpoch) {
+      const epochIndex = Math.floor(epoch / granularity) - Math.floor(firstEpoch / granularity);
+      if (data[epochIndex] === undefined) data[epochIndex] = 0;
+
       if (this.data.has(epoch)) {
-        data.push(this.data.get(epoch)!);
-      } else {
-        data.push(0);
+        data[epochIndex] += this.data.get(epoch) || 0;
       }
       epoch++;
     }
@@ -107,6 +118,18 @@ export class SpeedTracker {
       firstEpoch: from ? Math.max(Math.floor(from.getTime() / 1000), firstEpoch) : epochs[0],
       lastEpoch: until ? Math.min(Math.floor(until.getTime() / 1000), lastEpoch) : lastEpoch,
     };
+  }
+
+  /**
+   * Forget all data older (<) than the provided date
+   */
+  forgetOlderThan(date: number): void {
+    const epochs = Array.from(this.data.keys()).sort((a, b) => a - b);
+    for (const epoch of epochs) {
+      if (epoch < date) {
+        this.data.delete(epoch);
+      }
+    }
   }
 
   /**

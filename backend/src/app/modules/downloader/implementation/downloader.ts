@@ -2,16 +2,15 @@ import { Logger } from '@nestjs/common';
 import { FragmentStatus } from '../dtos';
 import { Ranges } from './ranges';
 import axios, { AxiosError, AxiosRequestConfig, CanceledError, CancelTokenSource, ResponseType } from 'axios';
-import * as http from 'http';
-import * as https from 'https';
-import { strict as assert } from 'assert';
+import http from 'http';
+import https from 'https';
 import fsp from 'node:fs/promises';
 import fs from 'fs';
-import { SpeedTracker } from '../plugins';
-import { crc32File, prettyBytes } from '../../../helpers';
+import { prettyBytes } from '../../../helpers';
 import * as path from 'path';
 import {
-  CompletedCallback, DownloaderAutoRestartCallback,
+  CompletedCallback,
+  DownloaderAutoRestartCallback,
   DownloaderOpts,
   DownloaderStats,
   DownloaderStatus,
@@ -21,6 +20,8 @@ import {
   WorkerState,
   WorkerStats,
 } from './downloader.interface';
+import { SpeedTracker } from '../../../stats';
+import { RuntimeException } from '@nestjs/core/errors/exceptions';
 
 
 export interface ResumableDownloaderOpts {
@@ -61,7 +62,7 @@ export class Downloader<T> implements IDownloader {
   private httpAgent: any;
   private httpsAgent: any;
   private url: string;
-  private saveAs: string;
+  private _saveAs: string;
   private fileSize: number;
   private workersCount: number;
   private chunkSize: number;
@@ -77,6 +78,7 @@ export class Downloader<T> implements IDownloader {
   private maxRedirects: number = 3;
   private logger: Logger | null;
   private autoRestartCallback?: DownloaderAutoRestartCallback;
+  private bytesSinceLastProgressUpdate: number = 0;
 
   /**
    * Create a downloader
@@ -88,7 +90,7 @@ export class Downloader<T> implements IDownloader {
     downloader.logger = opts.disableLogging ? null : new Logger('Downloader');
     downloader._sourceObject = opts.sourceObject;
     downloader.url = opts.url;
-    downloader.saveAs = opts.saveAs;
+    downloader._saveAs = opts.saveAs;
     downloader.httpAgent = opts.httpAgent;
     downloader.httpsAgent = opts.httpsAgent;
     downloader.fileSize = opts.fileSize;
@@ -125,7 +127,7 @@ export class Downloader<T> implements IDownloader {
     }
 
     // Ranges (might have been set by queryFileSize opportunistic check)
-    if (downloader.serverSupportsRanges === undefined) {
+    if (downloader.serverSupportsRanges === null) {
       downloader.serverSupportsRanges = await downloader.queryRangesSupport();
     }
 
@@ -159,7 +161,7 @@ export class Downloader<T> implements IDownloader {
 
   async configureResume(): Promise<void> {
     // file already exists?
-    if (fs.existsSync(this.saveAs)) {
+    if (fs.existsSync(this._saveAs)) {
       // if (this.getResumeData) {
       //   const ranges = await this._options.getResumeData(this);
       //   if (ranges) {
@@ -225,10 +227,6 @@ export class Downloader<T> implements IDownloader {
       while(this.status === DownloaderStatus.RUNNING || this.status === DownloaderStatus.RESTARTING || this.status === DownloaderStatus.STOPPING) {
         try {
           await this.startWorkers();
-          const fileCRC = await crc32File(this.saveAs);
-          this.logger.log(`FileCRC = ${fileCRC}`);
-          this.logger.log(`ItemCRC = ${this.sourceObject['crc32']}`);
-          this.logger.log(`CRC Check: ${fileCRC === this.sourceObject['crc32'] ? 'OK' : 'FAILED'}`);
           return resolve();
         } catch (err) {
           if (err === WorkerState.STOPPED || err.message === WorkerState.STOPPED) {
@@ -271,12 +269,16 @@ export class Downloader<T> implements IDownloader {
   }
 
   async startWorkers(): Promise<void> {
-    assert(this.workersCount > 0, 'workersCount must be greater than 0');
-    assert(this.chunkSize > 0, 'chunkSize must be greater than 0');
+    if (this.workersCount < 1) {
+      throw new RuntimeException('workersCount must be greater than 0');
+    }
+    if (this.chunkSize < 1) {
+      throw new RuntimeException('chunkSize must be greater than 0');
+    }
     this.status = DownloaderStatus.RUNNING;
 
     // Ensure saveAt directory exists
-    const saveAsDir = path.dirname(this.saveAs);
+    const saveAsDir = path.dirname(this._saveAs);
     await fsp.mkdir(saveAsDir, { recursive: true });
 
     // At this point we should have no reserved ranges
@@ -315,8 +317,9 @@ export class Downloader<T> implements IDownloader {
       workers.push(this.worker(id));
     }
 
-    this.debugOutput && this.logger.debug(`Starting Workers for ${this.saveAs}`);
+    this.debugOutput && this.logger.debug(`Starting Workers for ${this._saveAs}`);
     this.stats.workersRestartedAt = new Date();
+    this.bytesSinceLastProgressUpdate = 0;
     await Promise.all(workers);
     this.debugOutput && this.logger.debug('All workers completed');
     this.completedHandler();
@@ -417,7 +420,7 @@ export class Downloader<T> implements IDownloader {
 
       const response = await axios.get(this.url, axiosOpts);
       const stream = response.data;
-      const fd = await fsp.open(this.saveAs, 'a+');
+      const fd = await fsp.open(this._saveAs, 'a+');
       const fileStream = fd.createWriteStream({ start: range.start });
 
       try {
@@ -492,17 +495,19 @@ export class Downloader<T> implements IDownloader {
     this.stats.timestamp = now;
     this.stats.speedTracker.update(now, length);
     this.stats.downloadedBytes += length;
+    this.bytesSinceLastProgressUpdate += length;
 
     // Call update progress callback if needed
     if (this.progressUpdateInterval === undefined) {
-      this.progressCallback && this.progressCallback(this, this.stats);
+      this.progressCallback && this.progressCallback(this, this.stats, this.bytesSinceLastProgressUpdate);
       return;
     }
 
 
     if (now - this.lastProgressUpdateTimestamp >= this.progressUpdateInterval) {
       this.lastProgressUpdateTimestamp = now;
-      if (this.progressCallback) this.progressCallback(this, this.stats);
+      if (this.progressCallback) this.progressCallback(this, this.stats, length);
+      this.bytesSinceLastProgressUpdate = 0;
 
       if (this.logger && this.debugOutput) {
         // print in a single row the rates for each worker
@@ -524,7 +529,7 @@ export class Downloader<T> implements IDownloader {
             rates.push(`${rate} - ${bytesDownloaded} - ${percentage}%`);
           }
         });
-        this.logger.debug(`${this.saveAs}`);
+        this.logger.debug(`${this._saveAs}`);
         this.logger.debug(`${prettyBytes(this.stats.speedTracker.query(from, now))}/s (${rates.join(' | ')})`);
         for (let i=0; i < this.ranges.ranges.length; i++) {
           const range = this.ranges.ranges[i];
@@ -536,5 +541,9 @@ export class Downloader<T> implements IDownloader {
 
   get sourceObject(): T {
     return this._sourceObject;
+  }
+
+  get saveAs(): string {
+    return this._saveAs;
   }
 }
