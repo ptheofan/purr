@@ -1,5 +1,5 @@
 import { Field, ObjectType } from '@nestjs/graphql';
-import { GroupState } from '../../download-manager/enums/group-state.enum';
+import { GroupState } from '../enums';
 
 @ObjectType()
 export class GroupStateChangedDto {
