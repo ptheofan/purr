@@ -1,10 +1,10 @@
-import { forwardRef, Inject, Injectable, Logger } from '@nestjs/common';
+import { forwardRef, Inject, Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { PutioService } from './putio.service';
 import { AppConfigService } from '../../configuration';
-import { DownloadManagerService } from '../../download-manager/services';
+import { DownloadManagerService } from '../../download-manager';
 
 @Injectable()
-export class PutioOnDemandScannerService {
+export class PutioOnDemandScannerService implements OnModuleInit {
   private readonly logger = new Logger(PutioOnDemandScannerService.name);
 
   constructor(
@@ -13,6 +13,12 @@ export class PutioOnDemandScannerService {
     @Inject(forwardRef(() => DownloadManagerService)) private readonly dmService: DownloadManagerService,
   ) {}
 
+  async onModuleInit() {
+    // Scan targets for items on app start-up?
+    if (this.config.putioCheckAtStartup) {
+      await this.checkTargetsForDownloads();
+    }
+  }
 
   /**
    * Scans put.io targets for downloads

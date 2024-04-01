@@ -1,4 +1,5 @@
-export enum Triggers {
+export enum PubKeys {
   groupStateChanged = 'groupStateChanged',
+  groupAdded = 'groupAdded',
   downloadManagerStats = 'downloadManagerStats',
 }

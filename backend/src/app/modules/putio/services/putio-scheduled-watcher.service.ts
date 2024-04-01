@@ -1,11 +1,11 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { CronJob, CronTime } from 'cron';
 import { SchedulerRegistry } from '@nestjs/schedule';
 import { AppConfigService } from '../../configuration';
 import { PutioOnDemandScannerService } from './putio-on-demand-scanner.service';
 
 @Injectable()
-export class PutioScheduledWatcherService {
+export class PutioScheduledWatcherService implements OnModuleInit {
   private readonly logger = new Logger(PutioScheduledWatcherService.name);
   private job: CronJob;
 
@@ -14,6 +14,20 @@ export class PutioScheduledWatcherService {
     private readonly putioOnDemandScannerService: PutioOnDemandScannerService,
     private readonly config: AppConfigService,
   ) {}
+
+  async onModuleInit() {
+    // Init put.io Scheduled Watcher
+    if (!this.config.putioCheckCronSchedule) {
+      this.logger.log(
+        `Disabling scheduled put.io watcher because it's not configured.`,
+      );
+    } else {
+      this.logger.log(
+        `Scheduled put.io watcher is enabled: ${ this.config.putioCheckCronSchedule }`,
+      );
+    }
+    await this.configureCronJobs();
+  }
 
 
   async configureCronJobs() {

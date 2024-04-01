@@ -1,11 +1,11 @@
-import { forwardRef, Inject, Injectable, Logger } from '@nestjs/common';
+import { forwardRef, Inject, Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { PutioService } from './putio.service';
 import { createPutioSocketClient, EVENT_TYPE, PutioSocketClient } from '@putdotio/socket-client';
 import { AppConfigService, TargetModel } from '../../configuration';
-import { DownloadManagerService } from '../../download-manager/services';
+import { DownloadManagerService } from '../../download-manager';
 
 @Injectable()
-export class PutioSocketWatcherService {
+export class PutioSocketWatcherService implements OnModuleInit {
   private readonly logger = new Logger(PutioSocketWatcherService.name);
   private client: PutioSocketClient;
 
@@ -14,6 +14,20 @@ export class PutioSocketWatcherService {
     @Inject(forwardRef(() => DownloadManagerService)) private readonly dmService: DownloadManagerService,
     private readonly config: AppConfigService,
   ) {
+  }
+
+  async onModuleInit() {
+    // Init put.io Socket
+    if (!this.config.putioWatcherSocket) {
+      this.logger.warn(
+        `Monitoring put.io with live websocket is disabled by configuration.`,
+      );
+    } else {
+      this.logger.log(
+        `Monitoring put.io with live websocket is enabled by configuration.`,
+      );
+      await this.monitorTransfersUsingSocket();
+    }
   }
 
   async monitorTransfersUsingSocket() {

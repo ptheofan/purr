@@ -3,7 +3,7 @@ import { Volume } from 'memfs/lib/volume';
 import { DownloadGroupsRepository, DownloadItemsRepository } from '../repositories';
 import { crc32File, getFirstFileOrFolder, getMeta } from '../../../helpers';
 import { Group, Item } from '../entities';
-import { DownloadStatus } from '../enums';
+import { DownloadStatus, GroupState } from '../enums';
 import { Downloader, DownloaderFactory, DownloaderStats } from '../../downloader';
 import { Mutex } from 'async-mutex';
 import { PutioService } from '../../putio';
@@ -11,9 +11,8 @@ import { RuntimeException } from '@nestjs/core/errors/exceptions';
 import * as path from 'path';
 import * as fs from 'fs';
 import { AppConfigService } from '../../configuration';
-import { GroupState } from '../enums/group-state.enum';
 import { SpeedTracker } from '../../../stats';
-import { PublisherService } from '../../subscriptions/services';
+import { PublisherService } from './publisher.service';
 
 export interface IDownloadManagerSettings {
   concurrentLargeFiles?: number;

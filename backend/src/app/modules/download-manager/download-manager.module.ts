@@ -6,12 +6,14 @@ import { PutioModule } from '../putio';
 import { ConfigurationModule } from '../configuration';
 import { DownloadManagerResolver, GroupResolver, ItemResolver } from './resolvers';
 import { SubscriptionsModule } from '../subscriptions';
+import { PublisherService } from './services/publisher.service';
+import { GroupMapper, ItemMapper } from './mappers';
 
 @Module({
   imports: [
     ConfigurationModule,
     forwardRef(() => PutioModule),
-    SubscriptionsModule
+    SubscriptionsModule,
   ],
   controllers: [],
   providers: [
@@ -23,6 +25,9 @@ import { SubscriptionsModule } from '../subscriptions';
     GroupResolver,
     ItemResolver,
     DownloadManagerResolver,
+    PublisherService,
+    GroupMapper,
+    ItemMapper,
   ],
   exports: [
     DownloadManagerService,

@@ -3,15 +3,14 @@ import { Volume } from 'memfs/lib/volume';
 import { DownloadGroupsRepository, DownloadItemsRepository } from '../repositories';
 import { DownloadManagerService } from './download-manager.service';
 import { memfs } from 'memfs';
-import { DownloadStatus } from '../enums';
+import { DownloadStatus, GroupState } from '../enums';
 import { DownloaderFactory } from '../../downloader';
 import { Group, Item } from '../entities';
 import { PutioService } from '../../putio';
 import { AppConfigService } from '../../configuration';
-import { GroupState } from '../enums/group-state.enum';
 import { ConfigService } from '@nestjs/config';
-import { PublisherService } from '../../subscriptions/services';
 import * as process from 'process';
+import { PublisherService } from './publisher.service';
 
 type CreateItemsOptions = {
   groupId: number;

@@ -51,6 +51,14 @@ export type CreatePutioDownloadResultDto = {
   success: Scalars['Boolean']['output'];
 };
 
+export type DownloadManagerStatsDto = {
+  __typename?: 'DownloadManagerStatsDto';
+  histogram?: Maybe<HistogramDto>;
+  lifetimeBytes: Scalars['Int']['output'];
+  speed: Scalars['Int']['output'];
+  startedAt: Scalars['DateTime']['output'];
+};
+
 /** The status of this download */
 export enum DownloadStatus {
   Completed = 'Completed',
@@ -82,6 +90,15 @@ export type GroupStateChangedDto = {
   __typename?: 'GroupStateChangedDto';
   id: Scalars['Float']['output'];
   state: GroupState;
+};
+
+export type HistogramDto = {
+  __typename?: 'HistogramDto';
+  /** The granularity of the histogram in seconds. ie. 60 means each values[x] represents 1 minute of data */
+  granularity: Scalars['Float']['output'];
+  since: Scalars['DateTime']['output'];
+  until: Scalars['DateTime']['output'];
+  values: Array<Scalars['Float']['output']>;
 };
 
 /** An item represents a file that should be downloaded. */
@@ -119,6 +136,7 @@ export type Query = {
 
 export type Subscription = {
   __typename?: 'Subscription';
+  downloadManagerStats: DownloadManagerStatsDto;
   groupStateChanged: GroupStateChangedDto;
 };
 

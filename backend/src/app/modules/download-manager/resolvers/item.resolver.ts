@@ -1,16 +1,16 @@
 import { Query, Resolver } from '@nestjs/graphql';
-import { ItemModel } from '../models';
 import { DownloadItemsRepository } from '../repositories';
+import { ItemDto } from '../dtos';
 
-@Resolver(() => ItemModel)
+@Resolver(() => ItemDto)
 export class ItemResolver {
   constructor(
     private readonly itemRepo: DownloadItemsRepository,
   ) {
   }
 
-  @Query(() => [ItemModel])
-  async items(): Promise<ItemModel[]> {
+  @Query(() => [ItemDto])
+  async items(): Promise<ItemDto[]> {
     return this.itemRepo.getAll();
   }
 }

@@ -1,8 +1,9 @@
-import { DownloadManagerStatsDto, GroupStateChangedDto } from '../dtos';
+
 import { Inject } from '@nestjs/common';
 import { PubSub } from 'graphql-subscriptions';
-import { Triggers } from '../enums';
+import { PubKeys } from '../enums';
 import { RuntimeException } from '@nestjs/core/errors/exceptions';
+import { DownloadManagerStatsDto, GroupDto, GroupStateChangedDto } from '../dtos';
 
 export class PublisherService {
   constructor(
@@ -14,7 +15,15 @@ export class PublisherService {
       throw new RuntimeException(`The payload cannot be null`);
     }
 
-    return this.pubSub.publish(Triggers.groupStateChanged, { [Triggers.groupStateChanged]: payload });
+    return this.pubSub.publish(PubKeys.groupStateChanged, { [PubKeys.groupStateChanged]: payload });
+  }
+
+  async groupAdded(payload: GroupDto): Promise<void> {
+    if (!payload) {
+      throw new RuntimeException(`The payload cannot be null`);
+    }
+
+    return this.pubSub.publish(PubKeys.groupAdded, { [PubKeys.groupAdded]: payload });
   }
 
   async downloadManagerStats(payload: DownloadManagerStatsDto): Promise<void> {
@@ -22,6 +31,6 @@ export class PublisherService {
       throw new RuntimeException(`The payload cannot be null`);
     }
 
-    return this.pubSub.publish(Triggers.downloadManagerStats, { [Triggers.downloadManagerStats]: payload });
+    return this.pubSub.publish(PubKeys.downloadManagerStats, { [PubKeys.downloadManagerStats]: payload });
   }
 }

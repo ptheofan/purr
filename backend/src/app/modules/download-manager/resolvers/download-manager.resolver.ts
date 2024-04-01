@@ -2,14 +2,14 @@ import { Args, Int, Mutation, Resolver, Subscription } from '@nestjs/graphql';
 import { DownloadManagerService } from '../services';
 import { PutioService } from '../../putio';
 import { DownloadGroupsRepository } from '../repositories';
-import { CreatePutioDownloadResultDto } from '../dtos';
+import { CreatePutioDownloadResultDto, DownloadManagerStatsDto } from '../dtos';
 import { AppConfigService } from '../../configuration';
 import { PUB_SUB, restrictFolderToRoot } from '../../../helpers';
-import { PublisherService } from '../../subscriptions/services';
-import { Triggers } from '../../subscriptions/enums';
 import { Inject } from '@nestjs/common';
 import { PubSub } from 'graphql-subscriptions';
-import { GroupStateChangedDto, DownloadManagerStatsDto } from '../../subscriptions/dtos';
+import { PublisherService } from '../services/publisher.service';
+import { PubKeys } from '../enums';
+import { GroupMapper } from '../mappers';
 
 @Resolver()
 export class DownloadManagerResolver {
@@ -18,7 +18,8 @@ export class DownloadManagerResolver {
     private readonly putioService: PutioService,
     private readonly downloadManagerService: DownloadManagerService,
     private readonly groupRepo: DownloadGroupsRepository,
-    private readonly triggers: PublisherService,
+    private readonly pubService: PublisherService,
+    private readonly groupMapper: GroupMapper,
     @Inject(PUB_SUB) private readonly pubSub: PubSub,
   ) {
   }
@@ -59,7 +60,7 @@ export class DownloadManagerResolver {
       analysisCompletedPromise.then(async () => {
         const updatedGroup = await this.groupRepo.find(g => g.id === putioId);
         if (updatedGroup.state !== group.state) {
-          await this.triggers.groupStateChanged({
+          await this.pubService.groupStateChanged({
             id: updatedGroup.id,
             state: updatedGroup.state
           });
@@ -69,19 +70,15 @@ export class DownloadManagerResolver {
     }
 
     const group = await this.groupRepo.find(g => g.id === putioId);
+    await this.pubService.groupAdded(this.groupMapper.entityToDto(group));
     return {
       success: true,
       group,
     };
   }
 
-  @Subscription(() => GroupStateChangedDto)
-  groupStateChanged() {
-    return this.pubSub.asyncIterator(Triggers.groupStateChanged);
-  }
-
   @Subscription(() => DownloadManagerStatsDto)
   downloadManagerStats() {
-    return this.pubSub.asyncIterator(Triggers.downloadManagerStats);
+    return this.pubSub.asyncIterator(PubKeys.downloadManagerStats);
   }
 }

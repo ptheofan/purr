@@ -1,11 +1,11 @@
 import { Field, ObjectType } from '@nestjs/graphql';
 import { DownloadStatus } from '../enums';
-import { ItemModel } from './item.model';
-import { GroupState } from '../enums/group-state.enum';
+import { ItemDto } from './item.dto';
+import { GroupState } from '../enums';
 
 
 @ObjectType('Group', { description: 'A group represents a set of files that should be downloaded together.' })
-export class GroupModel {
+export class GroupDto {
   @Field(() => Number)
   id: number;
 
@@ -24,6 +24,6 @@ export class GroupModel {
   @Field(() => GroupState)
   state: GroupState;
 
-  @Field(() => [ItemModel], { nullable: true })
-  items?: ItemModel[];
+  @Field(() => [ItemDto], { nullable: true })
+  items?: ItemDto[];
 }

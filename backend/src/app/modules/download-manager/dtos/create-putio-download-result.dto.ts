@@ -1,5 +1,5 @@
-import { GroupModel } from '../models';
 import { Field, ObjectType } from '@nestjs/graphql';
+import { GroupDto } from './group.dto';
 
 @ObjectType()
 export class CreatePutioDownloadResultDto {
@@ -9,6 +9,6 @@ export class CreatePutioDownloadResultDto {
   @Field({ nullable: true })
   message?: string;
 
-  @Field(() => GroupModel, { nullable: true })
-  group?: GroupModel;
+  @Field(() => GroupDto, { nullable: true })
+  group?: GroupDto;
 }
