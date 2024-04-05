@@ -136,8 +136,14 @@ export type MutationCreateDownloadFromPutioArgs = {
 export type Query = {
   __typename?: 'Query';
   appConfig: AppConfig;
-  groups: Array<Group>;
+  getGroup: Group;
+  getGroups: Array<Group>;
   items: Array<Item>;
+};
+
+
+export type QueryGetGroupArgs = {
+  id: Scalars['Int']['input'];
 };
 
 export type Subscription = {

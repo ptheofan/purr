@@ -1,4 +1,4 @@
-import { Parent, Query, ResolveField, Resolver, Subscription } from '@nestjs/graphql';
+import { Args, Int, Parent, Query, ResolveField, Resolver, Subscription } from '@nestjs/graphql';
 import { DownloadGroupsRepository, DownloadItemsRepository } from '../repositories';
 import { GroupDto, GroupStateChangedDto, ItemDto } from '../dtos';
 import { PubKeys } from '../enums';
@@ -16,8 +16,13 @@ export class GroupResolver {
   }
 
   @Query(() => [GroupDto])
-  async groups(): Promise<GroupDto[]> {
+  async getGroups(): Promise<GroupDto[]> {
     return this.groupRepo.getAll();
+  }
+
+  @Query(() => GroupDto)
+  async getGroup(@Args('id', { type: () => Int }) id: number): Promise<GroupDto> {
+    return this.groupRepo.find(group => group.id === id);
   }
 
   @ResolveField()

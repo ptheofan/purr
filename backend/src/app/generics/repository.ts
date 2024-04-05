@@ -34,4 +34,16 @@ export abstract class Repository<T, K extends keyof T> {
 
     this.data[index] = { ...this.data[index], ...update };
   }
+
+  async remove(id: T[K]) {
+    this.data = this.data.filter(item => !this.dataEquals(item, id));
+  }
+
+  async removeMany(predicate: Predicate<T>) {
+    this.data = this.data.filter(item => !predicate(item));
+  }
+
+  async removeAll() {
+    this.data = [];
+  }
 }
