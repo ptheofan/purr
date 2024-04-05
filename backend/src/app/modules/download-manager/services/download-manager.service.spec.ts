@@ -91,6 +91,11 @@ describe('DownloadManagerService', () => {
           provide: PublisherService,
           useValue: {
             downloadManagerStats: jest.fn(),
+            groupStateChanged: jest.fn(),
+            groupStatusChanged: jest.fn(),
+            groupAdded: jest.fn(),
+            itemStatusChanged: jest.fn(),
+            itemStatsUpdated: jest.fn(),
           },
         },
         {
