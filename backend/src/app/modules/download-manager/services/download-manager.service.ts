@@ -190,7 +190,7 @@ export class DownloadManagerService {
     // Check if the items are already downloaded and update them accordingly
     const analysisCompletedPromise = new Promise<void>((resolve) => {
       this.checkGroupItemsOnDisk(group.id).then(async ({ groupId }) => {
-        await this.groupsRepo.update(groupId, { state: GroupState.Ready });
+        await this.updateGroupState(groupId, GroupState.Ready);
         resolve();
       });
     });
@@ -235,7 +235,7 @@ export class DownloadManagerService {
 
     // if all items are completed, mark the group as completed
     if (itemsCompletedCounter === items.length) {
-      await this.groupsRepo.update(groupId, { status: DownloadStatus.Completed });
+      await this.updateGroupStatus(groupId, DownloadStatus.Completed);
     }
 
     return { groupId };
@@ -414,10 +414,39 @@ export class DownloadManagerService {
     }
   }
 
+  async updateGroupStatus(groupId: number, status: DownloadStatus) {
+    const group = await this.groupsRepo.find(g => g.id === groupId);
+    if (!group) {
+      throw new RuntimeException(`Group ${ groupId } not found.`);
+    }
+
+    if (group.status !== status) {
+      await this.groupsRepo.update(groupId, { status });
+      await this.pubService.groupStatusChanged({ id: groupId, status });
+    }
+  }
+
+  async updateGroupState(groupId: number, state: GroupState) {
+    const group = await this.groupsRepo.find(g => g.id === groupId);
+    if (!group) {
+      throw new RuntimeException(`Group ${ groupId } not found.`);
+    }
+
+    if (group.state !== state) {
+      await this.groupsRepo.update(groupId, { state });
+      await this.pubService.groupStateChanged({ id: groupId, state });
+    }
+  }
+
   async updateItemStatus(id: number, status: DownloadStatus) {
     const item = await this.itemsRepo.find((item) => item.id === id);
     if (!item) {
       throw new RuntimeException(`Cannot update item ${ id } status. Item not found.`);
+    }
+
+    if (item.status === status) {
+      // Item is already in the desired status
+      return;
     }
 
     const group = await this.groupsRepo.find((group) => group.id === item.groupId);
@@ -425,18 +454,19 @@ export class DownloadManagerService {
       throw new RuntimeException(`Cannot update item ${ id } status. Group not found.`);
     }
     await this.itemsRepo.update(id, { status });
+    await this.pubService.itemStatusChanged({ id, status });
 
     // If the item is completed, check if the group is completed
     if (status === DownloadStatus.Completed || status === DownloadStatus.Error) {
       const groupItems = await this.itemsRepo.filter((item) => item.groupId === group.id);
       const completedItems = groupItems.filter((item) => item.status === DownloadStatus.Completed || item.status === DownloadStatus.Error);
       if (groupItems.length === completedItems.length) {
-        await this.groupsRepo.update(group.id, { status: DownloadStatus.Completed });
+        await this.updateGroupStatus(group.id, DownloadStatus.Completed);
       }
     } else if (status === DownloadStatus.Pending) {
       // if group is not downloading or pending, set it to pending
       if (group.status !== DownloadStatus.Downloading && group.status !== DownloadStatus.Pending) {
-        await this.groupsRepo.update(group.id, { status: DownloadStatus.Pending });
+        await this.updateGroupStatus(group.id, DownloadStatus.Pending);
       }
     }
   }

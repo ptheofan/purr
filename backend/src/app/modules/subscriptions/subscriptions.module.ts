@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
-import { PUB_SUB } from '../../helpers';
 import { PubSub } from 'graphql-subscriptions';
+
+export const PUB_SUB = 'PUB_SUB';
 
 @Module({
   imports: [],

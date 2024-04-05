@@ -115,6 +115,12 @@ export type Item = {
   status: DownloadStatus;
 };
 
+export type ItemStatusChangedDto = {
+  __typename?: 'ItemStatusChangedDto';
+  id: Scalars['Float']['output'];
+  status: DownloadStatus;
+};
+
 export type Mutation = {
   __typename?: 'Mutation';
   /** Create a new download from a put.io fileId */
@@ -137,7 +143,10 @@ export type Query = {
 export type Subscription = {
   __typename?: 'Subscription';
   downloadManagerStats: DownloadManagerStatsDto;
+  groupAdded: Group;
   groupStateChanged: GroupStateChangedDto;
+  groupStatusChanged: GroupStateChangedDto;
+  itemStatusChanged: ItemStatusChangedDto;
 };
 
 export type TargetModel = {

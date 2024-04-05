@@ -4,12 +4,13 @@ import { PutioService } from '../../putio';
 import { DownloadGroupsRepository } from '../repositories';
 import { CreatePutioDownloadResultDto, DownloadManagerStatsDto } from '../dtos';
 import { AppConfigService } from '../../configuration';
-import { PUB_SUB, restrictFolderToRoot } from '../../../helpers';
+import { restrictFolderToRoot } from '../../../helpers';
 import { Inject } from '@nestjs/common';
 import { PubSub } from 'graphql-subscriptions';
 import { PublisherService } from '../services/publisher.service';
 import { PubKeys } from '../enums';
 import { GroupMapper } from '../mappers';
+import { PUB_SUB } from '../../subscriptions';
 
 @Resolver()
 export class DownloadManagerResolver {

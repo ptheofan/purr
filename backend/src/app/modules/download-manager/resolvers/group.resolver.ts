@@ -3,8 +3,8 @@ import { DownloadGroupsRepository, DownloadItemsRepository } from '../repositori
 import { GroupDto, GroupStateChangedDto, ItemDto } from '../dtos';
 import { PubKeys } from '../enums';
 import { Inject } from '@nestjs/common';
-import { PUB_SUB } from '../../../helpers';
 import { PubSub } from 'graphql-subscriptions';
+import { PUB_SUB } from '../../subscriptions';
 
 @Resolver(() => GroupDto)
 export class GroupResolver {
@@ -28,6 +28,11 @@ export class GroupResolver {
   @Subscription(() => GroupStateChangedDto)
   groupStateChanged() {
     return this.pubSub.asyncIterator(PubKeys.groupStateChanged);
+  }
+
+  @Subscription(() => GroupStateChangedDto)
+  groupStatusChanged() {
+    return this.pubSub.asyncIterator(PubKeys.groupStatusChanged);
   }
 
   @Subscription(() => GroupDto)
