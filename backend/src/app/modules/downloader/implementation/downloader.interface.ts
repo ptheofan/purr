@@ -3,6 +3,7 @@ import http from 'http';
 import https from 'https';
 import { Downloader } from './downloader';
 import { SpeedTracker } from '../../../stats';
+import { registerEnumType } from '@nestjs/graphql';
 
 export class DownloaderOpts<T> {
   sourceObject: T
@@ -39,6 +40,10 @@ export enum WorkerState {
   RUNNING = 'running',
   STOPPED = 'stopped',
 }
+
+registerEnumType(WorkerState, {
+  name: 'WorkerState',
+});
 
 export interface DownloaderStats {
   timestamp: number;

@@ -21,7 +21,7 @@ export class GroupResolver {
   }
 
   @Query(() => GroupDto)
-  async getGroup(@Args('id', { type: () => Int }) id: number): Promise<GroupDto> {
+  async getGroup(@Args('id', { type: () => Int }) id: number): Promise<GroupDto|null> {
     return this.groupRepo.find(group => group.id === id);
   }
 

@@ -6,3 +6,4 @@ export * from './histogram.dto';
 export * from './group.dto';
 export * from './item.dto';
 export * from './item-status-changed.dto';
+export * from './item-stats.dto';

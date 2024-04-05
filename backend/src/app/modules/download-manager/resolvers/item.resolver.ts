@@ -1,6 +1,6 @@
-import { Query, Resolver, Subscription } from '@nestjs/graphql';
+import { Args, Int, Query, Resolver, Subscription } from '@nestjs/graphql';
 import { DownloadItemsRepository } from '../repositories';
-import { ItemDto, ItemStatusChangedDto } from '../dtos';
+import { ItemDto, ItemStatsDto, ItemStatusChangedDto } from '../dtos';
 import { Inject } from '@nestjs/common';
 import { PubSub } from 'graphql-subscriptions';
 import { PubKeys } from '../enums';
@@ -15,12 +15,22 @@ export class ItemResolver {
   }
 
   @Query(() => [ItemDto])
-  async items(): Promise<ItemDto[]> {
+  async getItems(): Promise<ItemDto[]> {
     return this.itemRepo.getAll();
+  }
+
+  @Query(() => ItemDto)
+  async getItem(@Args('id', { type: () => Int }) id: number): Promise<ItemDto> {
+    return this.itemRepo.find(item => item.id === id);
   }
 
   @Subscription(() => ItemStatusChangedDto)
   itemStatusChanged() {
     return this.pubSub.asyncIterator(PubKeys.itemStatusChanged);
+  }
+
+  @Subscription(() => ItemStatsDto)
+  itemStatsUpdated() {
+    return this.pubSub.asyncIterator(PubKeys.itemStatsUpdated);
   }
 }

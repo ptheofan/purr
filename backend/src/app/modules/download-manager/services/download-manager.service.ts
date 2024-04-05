@@ -13,6 +13,7 @@ import * as fs from 'fs';
 import { AppConfigService } from '../../configuration';
 import { SpeedTracker } from '../../../stats';
 import { PublisherService } from './publisher.service';
+import { ItemStatsDto } from '../dtos';
 
 export interface IDownloadManagerSettings {
   concurrentLargeFiles?: number;
@@ -507,6 +508,37 @@ export class DownloadManagerService {
     if (this.totalBytesDownloaded) {
       this.totalBytesDownloaded.bytes += bytesSinceLastCall;
     }
+
+    const now = new Date();
+    const from = new Date(now.getTime() - this.speedQueryDuration);
+    const histogram = stats.speedTracker.histogram(from, now);
+    // noinspection JSIgnoredPromiseFromCall
+    this.pubService.itemStatsUpdated({
+      itemId: downloader.sourceObject.id,
+      startedAt: stats.startedAt,
+      restartedAt: stats.workersRestartedAt,
+      downloadedBytes: stats.downloadedBytes,
+      bytesSinceLastEvent: bytesSinceLastCall,
+      speed: stats.speedTracker.query(from, now),
+      fragments: stats.ranges,
+      histogram: {
+        since: new Date(histogram.startEpoch * 1000),
+        until: new Date(histogram.endEpoch * 1000),
+        granularity: 1,
+        values: histogram.values,
+      },
+      workers: downloader.getWorkersStats().map((worker) => ({
+        id: worker.id,
+        state: worker.state,
+        speed: worker.speedTracker.query(from, now),
+        downloadedBytes: worker.downloadedBytes,
+        fragmentStats: {
+          start: worker.range?.start,
+          end: worker.range?.end,
+          downloadedBytes: worker.range?.downloadedBytes,
+        },
+      })),
+    } as ItemStatsDto);
   }
 
   async completedCallback(downloader: Downloader<Item>) {

@@ -2,7 +2,14 @@ import { Inject } from '@nestjs/common';
 import { PubSub } from 'graphql-subscriptions';
 import { PubKeys } from '../enums';
 import { RuntimeException } from '@nestjs/core/errors/exceptions';
-import { DownloadManagerStatsDto, GroupDto, GroupStateChangedDto, GroupStatusChangedDto, ItemStatusChangedDto } from '../dtos';
+import {
+  DownloadManagerStatsDto,
+  GroupDto,
+  GroupStateChangedDto,
+  GroupStatusChangedDto,
+  ItemStatsDto,
+  ItemStatusChangedDto
+} from '../dtos';
 
 export class PublisherService {
   constructor(
@@ -39,6 +46,14 @@ export class PublisherService {
     }
 
     return this.pubSub.publish(PubKeys.itemStatusChanged, { [PubKeys.itemStatusChanged]: payload });
+  }
+
+  async itemStatsUpdated(payload: ItemStatsDto): Promise<void> {
+    if (!payload) {
+      throw new RuntimeException(`The payload cannot be null`);
+    }
+
+    return this.pubSub.publish(PubKeys.itemStatsUpdated, { [PubKeys.itemStatsUpdated]: payload });
   }
 
   async downloadManagerStats(payload: DownloadManagerStatsDto): Promise<void> {
