@@ -387,7 +387,7 @@ export class DownloadManagerService {
         autoRestartCallback: this.downloadAutoRestartCallback.bind(this),
         progressCallback: this.progressCallback.bind(this),
         completedCallback: this.completedCallback.bind(this),
-        errorCallback: undefined,
+        errorCallback: this.errorCallback.bind(this),
       });
 
       downloader.start()
@@ -547,7 +547,7 @@ export class DownloadManagerService {
     const fileCRC = await crc32File(downloader.saveAs);
     if (fileCRC !== item['crc32']) {
       // CRC32 check failed, re-download the item
-      this.logger.log(`CRC Check: Failed for ${ item.name }`);
+      this.logger.warn(`CRC Check failed for ${ item.name }, will retry download.`);
       await this.updateItemStatus(item.id, DownloadStatus.Pending);
       return;
     }
@@ -557,5 +557,11 @@ export class DownloadManagerService {
 
     // Delete the file from put.io
     await this.putioService.deleteFile(downloader.sourceObject.id);
+  }
+
+  async errorCallback(downloader: Downloader<Item>) {
+    const item = downloader.sourceObject;
+    this.logger.error(`Download failed for ${ item.name }`);
+    await this.updateItemStatus(item.id, DownloadStatus.Error);
   }
 }
