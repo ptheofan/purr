@@ -3,7 +3,7 @@ import MockAdapter from "axios-mock-adapter";
 import { Downloader } from "./downloader";
 import { DownloaderStatus, WorkerState } from "./downloader.interface";
 import { Readable } from "stream";
-import fs, { unlinkSync } from "fs";
+import { unlinkSync } from "fs";
 
 // Mock the axios module
 // jest.mock("axios");
