@@ -20,7 +20,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Get node version from package.json
         run: |
-          echo "$(cat ./package.json)" | jq .engines.node | xargs -I {} echo "nodeVersion="{} >> $GITHUB_ENV
+          echo "$(cat ./backend/package.json)" | jq .engines.node | xargs -I {} echo "nodeVersion="{} >> $GITHUB_ENV
       - name: Use node version ${{ env.nodeVersion }} from package.json
         uses: actions/setup-node@v4
         with:
