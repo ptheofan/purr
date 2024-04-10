@@ -390,7 +390,7 @@ export class DownloadManagerService {
         errorCallback: this.errorCallback.bind(this),
       });
 
-      downloader.start()
+      downloader.download()
         .then(async () => {
           await this.updateItemStatus(item.id, DownloadStatus.Completed);
           try {
