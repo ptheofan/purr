@@ -1,5 +1,4 @@
-import { DownloadStatus } from '../enums';
-import { GroupState } from '../enums/group-state.enum';
+import { DownloadStatus, GroupState } from "../enums";
 
 /**
  * A group represents a set of files that should be downloaded together.

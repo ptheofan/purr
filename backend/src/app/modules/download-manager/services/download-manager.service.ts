@@ -260,7 +260,7 @@ export class DownloadManagerService {
       return downloadingGroups;
     }
 
-    const pendingGroups = await this.groupsRepo.filter(group => group.status === DownloadStatus.Pending);
+    const pendingGroups = await this.groupsRepo.filter(group => group.state === GroupState.Ready && group.status === DownloadStatus.Pending);
     const rVal = downloadingGroups;
     const pendingGroupsToAdd = Math.min(this.concurrentGroups - downloadingGroups.length, pendingGroups.length);
     for (let i = 0; i < pendingGroupsToAdd; i++) {

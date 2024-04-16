@@ -396,5 +396,87 @@ describe('DownloadManagerService', () => {
       // Should not return items already in downloading state
       expect(countSmallLargeItems(result, [DownloadStatus.Downloading])).toEqual({ small: 0, large: 0 });
     });
+
+    it('test minimum limit to 1 small, 1 large and 1 group', async () => {
+      service.setSettings({
+        concurrentLargeFiles: 1,
+        concurrentSmallFiles: 1,
+        concurrentGroups: 1,
+        smallFileThreshold: 1024 * 1024 * 10,   // 10MB
+      })
+
+      await groupsRepo.addMany([
+        { id: 1, name: 'group1', status: DownloadStatus.Pending, saveAt: '/save/here', addedAt: new Date(), state: GroupState.Initializing, },
+        { id: 2, name: 'group2', status: DownloadStatus.Pending, saveAt: '/save/here', addedAt: new Date(), state: GroupState.Initializing, },
+      ]);
+
+      // small ids 1, 2, 3, 4, 5
+      // large ids 6, 7
+      await itemsRepo.addMany(createItems({
+        groupId: 1,
+        [DownloadStatus.Pending]: { small: 5, large: 2 },
+      }));
+
+      // small ids 8
+      // large ids 9
+      await itemsRepo.addMany(createItems({
+        groupId: 2,
+        [DownloadStatus.Pending]: { small: 1, large: 1 },
+      }));
+
+      // Groups are still initializing, not eligible for download yet
+      let groups = await service.getDownloadGroupCandidates();
+      expect(groups).toHaveLength(0);
+
+      // Switch the groups to ready
+      await groupsRepo.update(1, { state: GroupState.Ready });
+      await groupsRepo.update(2, { state: GroupState.Ready });
+
+      groups = await service.getDownloadGroupCandidates();
+      expect(groups).toHaveLength(1);
+      expect(groups[0].id).toEqual(1);
+
+      let items = await service.getDownloadItemCandidates(groups);
+      expect(countSmallLargeItems(items, [DownloadStatus.Pending])).toEqual({ small: 1, large: 1 });
+      expect(items[0].id).toEqual(1);
+      expect(items[1].id).toEqual(6);
+
+      // Mark the small and large items as downloading
+      await itemsRepo.update(1, { status: DownloadStatus.Downloading });
+      await itemsRepo.update(6, { status: DownloadStatus.Downloading });
+
+      // 1 small and 1 large are downloading, should have the downloading group as candidate but no items
+      groups = await service.getDownloadGroupCandidates();
+      expect(groups).toHaveLength(1);
+      expect(groups[0].id).toEqual(1);
+      items = await service.getDownloadItemCandidates(groups);
+      expect(items).toHaveLength(0);
+
+      // 1 small item completed, should tell us to start downloading the next small file of the same group
+      await itemsRepo.update(1, { status: DownloadStatus.Completed });
+      groups = await service.getDownloadGroupCandidates();
+      expect(groups).toHaveLength(1);
+      expect(groups[0].id).toEqual(1);
+      items = await service.getDownloadItemCandidates(groups);
+      expect(countSmallLargeItems(items, [DownloadStatus.Pending])).toEqual({ small: 1, large: 0 });
+      expect(items[0].id).toEqual(2);
+
+      await itemsRepo.update(2, { status: DownloadStatus.Downloading });
+      groups = await service.getDownloadGroupCandidates();
+      expect(groups).toHaveLength(1);
+      expect(groups[0].id).toEqual(1);
+      items = await service.getDownloadItemCandidates(groups);
+      expect(countSmallLargeItems(items, [DownloadStatus.Pending])).toEqual({ small: 0, large: 0 });
+      expect(items).toHaveLength(0);
+
+      // 1 large item completed, should tell us to start downloading the next large file of the same group
+      await itemsRepo.update(6, { status: DownloadStatus.Completed });
+      groups = await service.getDownloadGroupCandidates();
+      expect(groups).toHaveLength(1);
+      expect(groups[0].id).toEqual(1);
+      items = await service.getDownloadItemCandidates(groups);
+      expect(countSmallLargeItems(items, [DownloadStatus.Pending])).toEqual({ small: 0, large: 1 });
+      expect(items[0].id).toEqual(7);
+    });
   });
 });
