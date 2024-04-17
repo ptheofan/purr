@@ -220,11 +220,13 @@ export class DownloadManagerService {
       if (fs.existsSync(saveAs)) {
         const crc32 = await crc32File(saveAs);
         if (crc32 !== item.crc32) {
+          this.logger.warn(`CRC32 (${crc32} was expected ${ item.crc32 }) Check failed for ${ item.name } (${ item.id }), will retry download.`)
           // If the file exists but the CRC32 does not match, mark the item as pending
           await this.itemsRepo.update(item.id, { status: DownloadStatus.Pending });
           // remove the file
           fs.unlinkSync(saveAs);
         } else {
+          this.logger.log(`CRC32 Check passed for ${ item.name } (${ item.id }), will mark as completed.`);
           // If the file exists and the CRC32 matches, mark the item as completed
           await this.itemsRepo.update(item.id, { status: DownloadStatus.Completed });
           itemsCompletedCounter++;
@@ -379,8 +381,7 @@ export class DownloadManagerService {
         url: item.downloadLink,
         saveAs: saveAs,
         progressUpdateInterval: this.appConfig.uiProgressUpdateInterval,
-        debugOutput: true,
-        disableLogging: false,
+        debugOutput: false,
         workersCount: item.size <= this.smallFileThreshold ? 1 : 4,
         fileSize: item.size,
         chunkSize: this.appConfig.downloaderChunkSize,
@@ -481,10 +482,16 @@ export class DownloadManagerService {
       return false;
     }
 
+    if (!downloader.getStats().workersRestartedAt && !downloader.getStats().startedAt) {
+      // Workers have not been started yet
+      return false;
+    }
+
     const timeElapsedThreshold = 1000 * this.appConfig.downloaderPerformanceMonitoringTime;
 
     // Time elapsed since last workers restart in ms
-    const timeElapsed = Date.now() - downloader.getStats().workersRestartedAt.getTime();
+    const since = downloader.getStats().workersRestartedAt?.getTime() || downloader.getStats().startedAt.getTime();
+    const timeElapsed = Date.now() - since;
 
     // if time elapsed is over timeElapsedThreshold seconds do a speed check
     if (timeElapsed > timeElapsedThreshold) {
@@ -519,7 +526,7 @@ export class DownloadManagerService {
       restartedAt: stats.workersRestartedAt,
       downloadedBytes: stats.downloadedBytes,
       bytesSinceLastEvent: bytesSinceLastCall,
-      speed: stats.speedTracker.query(from, now),
+      speed: Math.round(stats.speedTracker.query(from, now)),
       fragments: stats.ranges,
       histogram: {
         since: new Date(histogram.startEpoch * 1000),
@@ -530,7 +537,7 @@ export class DownloadManagerService {
       workers: downloader.getWorkersStats().map((worker) => ({
         id: worker.id,
         state: worker.state,
-        speed: worker.speedTracker.query(from, now),
+        speed: Math.round(worker.speedTracker.query(from, now)),
         downloadedBytes: worker.downloadedBytes,
         fragmentStats: {
           start: worker.range?.start,
@@ -547,7 +554,10 @@ export class DownloadManagerService {
     const fileCRC = await crc32File(downloader.saveAs);
     if (fileCRC !== item['crc32']) {
       // CRC32 check failed, re-download the item
-      this.logger.warn(`CRC Check failed for ${ item.name }, will retry download.`);
+      this.logger.warn(`CRC32 (${fileCRC} was expected ${ item.crc32 }) Check failed for ${ item.name } (${ item.id }), will retry download.`)
+      // Delete the file from the disk
+      fs.unlinkSync(downloader.saveAs);
+      // Update the item status to pending
       await this.updateItemStatus(item.id, DownloadStatus.Pending);
       return;
     }
@@ -555,8 +565,12 @@ export class DownloadManagerService {
     // Update the item status to completed
     await this.updateItemStatus(item.id, DownloadStatus.Completed);
 
-    // Delete the file from put.io
-    await this.putioService.deleteFile(downloader.sourceObject.id);
+    // If entire group is completed, delete the group from put.io
+    const group = await this.groupsRepo.find((group) => group.id === item.groupId);
+    if (group && group.status === DownloadStatus.Completed) {
+      this.logger.log(`Group ${ group.id } is completed. Deleting from put.io.`);
+      await this.putioService.deleteFile(group.id);
+    }
   }
 
   async errorCallback(downloader: Downloader<Item>) {

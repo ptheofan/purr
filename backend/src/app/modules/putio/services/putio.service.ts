@@ -159,14 +159,14 @@ export class PutioService {
 
             return rVal;
           } else {
-            this.logger.debug(`Download Links response has no links!`, getLinkResponse);
+            this.logger.debug(`Download Links response has no links (${ putioIds.join(', ') })!`, getLinkResponse);
           }
         }
       } catch (err) {
         this.logger.error(`Error while attempting to get download links for ${ putioIds.join(', ') } (${ err.error_message }) - ${ retries } retries remaining.`);
-        // sleep for 2 seconds before retrying
-        await new Promise((resolve) => setTimeout(resolve, 2000));
       }
+      // sleep for 2 seconds before retrying
+      await new Promise((resolve) => setTimeout(resolve, 2000));
     }
 
     throw new RuntimeException(`Failed to get download links for ${ putioIds.join(', ') } after ${ retries } attempts`);
