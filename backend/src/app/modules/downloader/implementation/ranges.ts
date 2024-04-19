@@ -1,13 +1,13 @@
 import { FragmentStatus } from '../dtos';
 
 
-interface Fragment {
+export interface Fragment {
   start: number;
   end: number;
   status: FragmentStatus;
 }
 
-class Ranges {
+export class Ranges {
   private _ranges: Fragment[] = [];
 
   get ranges(): Fragment[] {
@@ -188,4 +188,3 @@ class Ranges {
   }
 }
 
-export { Ranges, Fragment };

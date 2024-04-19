@@ -70,10 +70,10 @@ export interface WorkerStats {
   range?: RangeStats;
 }
 
-export type ProgressCallback = (downloader: IDownloader, stats: DownloaderStats, bytesSinceLastCall: number) => void;
+export type ProgressCallback = (downloader: IDownloader, stats: DownloaderStats, bytesSinceLastCall: number) => Promise<void> | void;
 export type CompletedCallback = (downloader: IDownloader) => Promise<void> | void;
 export type GetResumeDataCallback = (downloader: IDownloader) => Promise<Ranges | undefined>;
-export type ErrorCallback = (downloader: IDownloader, error: Error) => void;
+export type ErrorCallback = (downloader: IDownloader, error: Error) => Promise<void> | void;
 
 export interface IDownloader {
 

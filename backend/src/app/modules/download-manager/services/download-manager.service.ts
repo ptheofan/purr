@@ -331,15 +331,19 @@ export class DownloadManagerService {
    * Start the download queue
    */
   async start() {
+    this.logger.debug('Starting download queue.')
     return startMutex.runExclusive(async () => {
+      this.logger.debug('Running start mutex.')
       try {
         const groups = await this.getDownloadGroupCandidates();
         if (groups.length === 0) {
+          this.logger.debug('Exiting start mutex - no groups to download.')
           return;
         }
 
         const items = await this.getDownloadItemCandidates(groups);
         if (items.length === 0) {
+          this.logger.debug('Exiting start mutex - no items to download.')
           return;
         }
 
@@ -355,6 +359,7 @@ export class DownloadManagerService {
         }
 
         // assign the download links to the items and start downloading them
+        this.logger.debug('in mutex - Starting download of items.')
         await Promise.all(items.map(async (item, index) => {
           items[index].downloadLink = links[index];
           const group = groups.find(group => group.id === items[index].groupId);
@@ -364,6 +369,8 @@ export class DownloadManagerService {
       } catch (error) {
         this.logger.error(error);
       }
+
+      this.logger.debug('Exiting start mutex.')
     });
   }
 
@@ -399,11 +406,13 @@ export class DownloadManagerService {
           } catch (error) {
             this.logger.error(`Downloader completed successfully but failed to delete the file ${ item.id } from putio.`, error);
           }
+          this.logger.debug(`Download ${ item.name } completed, calling START again.`)
           await this.start();
         })
         .catch(async (error) => {
           await this.updateItemStatus(item.id, DownloadStatus.Error);
           this.logger.error(`download ${ item.name } failed! ${ error.error_message }`, error.stack);
+          this.logger.debug(`Download ${ item.name } failed, calling START again.`)
           await this.start();
         });
     } catch (error) {
@@ -412,6 +421,7 @@ export class DownloadManagerService {
         status: DownloadStatus.Error,
         error: error instanceof Error ? error.message : error as string
       });
+      this.logger.debug(`Download ${ item.name } failed, calling START again.`)
       await this.start();
     }
   }
@@ -571,11 +581,17 @@ export class DownloadManagerService {
       this.logger.log(`Group ${ group.id } is completed. Deleting from put.io.`);
       await this.putioService.deleteFile(group.id);
     }
+
+    // Update item progress to completion
+    this.progressCallback(downloader, downloader.getStats(), 0);
   }
 
   async errorCallback(downloader: Downloader<Item>) {
     const item = downloader.sourceObject;
     this.logger.error(`Download failed for ${ item.name }`);
     await this.updateItemStatus(item.id, DownloadStatus.Error);
+
+    // Update item progress present
+    this.progressCallback(downloader, downloader.getStats(), 0);
   }
 }
