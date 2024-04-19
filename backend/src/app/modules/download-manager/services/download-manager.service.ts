@@ -577,7 +577,7 @@ export class DownloadManagerService {
 
     // If entire group is completed, delete the group from put.io
     const group = await this.groupsRepo.find((group) => group.id === item.groupId);
-    if (group && group.status === DownloadStatus.Completed) {
+    if (group.status === DownloadStatus.Completed) {
       this.logger.log(`Group ${ group.id } is completed. Deleting from put.io.`);
       await this.putioService.deleteFile(group.id);
     }
