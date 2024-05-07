@@ -1,8 +1,8 @@
 import { registerEnumType } from '@nestjs/graphql';
 
 export enum GroupState {
-  Initializing = 'INITIALIZING',
-  Ready = 'READY',
+  Initializing = 'Initializing',
+  Ready = 'Ready',
 }
 
 registerEnumType(GroupState, {

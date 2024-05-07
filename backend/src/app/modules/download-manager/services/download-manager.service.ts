@@ -231,7 +231,7 @@ export class DownloadManagerService {
           await this.itemsRepo.update(item.id, { status: DownloadStatus.Completed });
           itemsCompletedCounter++;
           // Delete the file from put.io
-          await this.putioService.deleteFile(item.id);
+          await this.putioService.deleteItem(item.id);
         }
       }
     }
@@ -579,7 +579,7 @@ export class DownloadManagerService {
     const group = await this.groupsRepo.find((group) => group.id === item.groupId);
     if (group.status === DownloadStatus.Completed) {
       this.logger.log(`Group ${ group.id } is completed. Deleting from put.io.`);
-      await this.putioService.deleteFile(group.id);
+      await this.putioService.deleteItem(group.id);
     }
 
     // Update item progress to completion

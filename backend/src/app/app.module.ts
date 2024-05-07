@@ -1,7 +1,6 @@
 import { Module } from '@nestjs/common';
 import { DownloadManagerModule, PutioModule, UploaderModule, WatcherService } from './modules';
 import { ScheduleModule } from '@nestjs/schedule';
-import { AppController } from './app.controller';
 import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo';
 import { GraphQLModule } from '@nestjs/graphql';
 import { ApolloServerPluginLandingPageLocalDefault } from '@apollo/server/plugin/landingPage/default';
@@ -31,7 +30,6 @@ import { ServeStaticModule } from '@nestjs/serve-static';
       exclude: ['/api(.*)', '/graphql(.*)'],
     }),
   ],
-  controllers: [AppController],
   providers: [
     WatcherService,
   ],

@@ -7,6 +7,7 @@ import HomeOutlinedIcon from '@mui/icons-material/HomeOutlined';
 import styled from '@emotion/styled';
 
 interface ItemProps {
+  id: string;
   title: string;
   to: string;
   icon: ReactNode;
@@ -14,10 +15,38 @@ interface ItemProps {
   setSelected: (title: string) => void;
 }
 
-const navItems = [
+type NavItem = {
+  id?: string;
+  title: string;
+  to?: string;
+  items?: NavItem[];
+}
+
+const navItems: NavItem[] = [
   {
-    title: 'Dashboard',
+    title: 'Downloads',
     to: '/',
+  },
+  {
+    title: 'Put.io',
+    items: [
+      {
+        title: 'Overview',
+        to: '/putio',
+      },
+      {
+        title: 'Transfers',
+        to: '/putio/transfers',
+      },
+      {
+        title: 'Create Download Target',
+        to: '/putio/targets/download',
+      },
+      {
+        title: 'Create Upload Target',
+        to: '/putio/targets/upload',
+      },
+    ],
   },
   {
     title: 'Config',
@@ -25,7 +54,7 @@ const navItems = [
   },
 ];
 
-const Item = ({ title, to, icon, selected, setSelected }: ItemProps) => {
+const Item = ({ id, title, to, icon, selected, setSelected }: ItemProps) => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
   return (
@@ -34,13 +63,80 @@ const Item = ({ title, to, icon, selected, setSelected }: ItemProps) => {
       style={ {
         color: colors.grey[100],
       } }
-      onClick={ () => setSelected(title) }
+      onClick={ () => setSelected(id) }
       icon={ icon }
-      component={ <Link to={ to } /> }
+      component={ <Link to={ to }/> }
     >
       <Typography>{ title }</Typography>
     </MenuItem>
   );
+};
+
+const submenusToActiveItem = (items: NavItem[], selected: string): string[] => {
+  const activeSubmenus: string[] = [];
+  function recursiveSearch(item: NavItem): boolean {
+    if (item.items!.find((item) => item.id === selected)) {
+      activeSubmenus.push(item.id!);
+      return true;
+    }
+
+    item.items!.filter((item) => item.items).forEach((i) => {
+      if (recursiveSearch(i)) {
+        activeSubmenus.push(i.id!);
+        return true;
+      }
+    });
+
+    return false;
+  }
+
+  if (items.find((item) => item.id === selected)) {
+    return [];
+  }
+
+  const submenus = items.filter((item) => item.items);
+  for (const submenu of submenus) {
+      if (recursiveSearch(submenu)) {
+        return activeSubmenus;
+      }
+  }
+
+  return [];
+}
+
+// A recursive function to render the menu items
+const renderItems = (items: NavItem[], activeSubmenus: string[], selected: string, setSelected: (title: string) => void) => {
+  return items.map((item) => {
+    if (!item.id) {
+      item.id = item.title;
+    }
+    if (item.items) {
+      const active = activeSubmenus.includes(item.id);
+      console.log('defaultOpen', active)
+      return (
+        <SubMenu
+          key={ item.title }
+          label={ item.title }
+          icon={ <HomeOutlinedIcon/> }
+          active={ active }
+          defaultOpen={ active }
+        >
+          { renderItems(item.items, activeSubmenus, selected, setSelected) }
+        </SubMenu>
+      );
+    }
+    return (
+      <Item
+        id={ item.id }
+        key={ item.id }
+        title={ item.title }
+        to={ item.to! }
+        icon={ <HomeOutlinedIcon/> }
+        selected={ selected }
+        setSelected={ setSelected }
+      />
+    );
+  });
 };
 
 const StyledSidebarHeader = styled.div`
@@ -87,6 +183,20 @@ export const useLeftbar = (): [boolean, TSetCollapsed] => {
   return [isCollapsed, setCollapsed];
 };
 
+const recursiveFindItemByUrl = (items: NavItem[], to: string): NavItem | undefined => {
+  for (const item of items) {
+    if (item.to === to) {
+      return item;
+    }
+    if (item.items) {
+      const found = recursiveFindItemByUrl(item.items, to);
+      if (found) {
+        return found;
+      }
+    }
+  }
+  return undefined;
+}
 
 const Leftbar = () => {
   const theme = useTheme();
@@ -98,10 +208,11 @@ const Leftbar = () => {
 
   useEffect(() => {
     // Match the path to navItems and set the selected item
-    const item = navItems.find((item) => item.to === pathname);
+    const item = recursiveFindItemByUrl(navItems, pathname);
     if (item) {
-      setSelected(item.title);
+      setSelected(item.id!);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const menuItemStyles: MenuItemStyles = {
@@ -128,6 +239,8 @@ const Leftbar = () => {
       backgroundColor: theme.palette.mode === 'dark' ? colors.primary[450] : '#e4e4e4',
     },
   };
+
+  const activeSubmenus = submenusToActiveItem(navItems, selected);
 
   return (
     <Sidebar
@@ -163,56 +276,8 @@ const Leftbar = () => {
         </Typography>
       </div>
 
-      <Menu
-        menuItemStyles={ menuItemStyles }
-      >
-        <Item
-          title="Dashboard"
-          to="/"
-          icon={ <HomeOutlinedIcon/> }
-          selected={ selected }
-          setSelected={ setSelected }
-        />
-        <SubMenu
-          label="Put.io"
-          icon={ <HomeOutlinedIcon/> }
-        >
-          <Item
-            title="Overview"
-            to="/"
-            icon={ <HomeOutlinedIcon/> }
-            selected={ selected }
-            setSelected={ setSelected }
-          />
-          <Item
-            title="Transfers"
-            to="/"
-            icon={ <HomeOutlinedIcon/> }
-            selected={ selected }
-            setSelected={ setSelected }
-          />
-          <Item
-            title="Create Download Target"
-            to="/"
-            icon={ <HomeOutlinedIcon/> }
-            selected={ selected }
-            setSelected={ setSelected }
-          />
-          <Item
-            title="Create Upload Target"
-            to="/"
-            icon={ <HomeOutlinedIcon/> }
-            selected={ selected }
-            setSelected={ setSelected }
-          />
-        </SubMenu>
-        <Item
-          title="Config"
-          to="/config"
-          icon={ <HomeOutlinedIcon/> }
-          selected={ selected }
-          setSelected={ setSelected }
-        />
+      <Menu menuItemStyles={ menuItemStyles }>
+        { renderItems(navItems, activeSubmenus, selected, setSelected) }
       </Menu>
     </Sidebar>
   );

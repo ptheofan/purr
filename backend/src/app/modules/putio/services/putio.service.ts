@@ -118,7 +118,7 @@ export class PutioService {
     }
   }
 
-  async deleteFile(id: number): Promise<void> {
+  async deleteItem(id: number): Promise<void> {
     try {
       const api = await this.getApi();
       await this.rateLimitSafeCall(async () => await api.Files.Delete([id]));

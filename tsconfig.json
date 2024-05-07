@@ -1,8 +1,8 @@
 {
   "compilerOptions": {
     "paths": {
-      "@purr/backend/*": ["backend/src/*"],
-      "@purr/client/*": ["client/src/*"],
+      "@purr/backend/*": ["/backend/src/*"],
+      "@purr/client/*": ["/client/src/*"],
     }
   },
   "exclude": [
