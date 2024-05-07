@@ -1,7 +1,7 @@
 import { ColorModeContext, useMode } from '../theme.ts';
 import { CssBaseline, ThemeProvider } from '@mui/material';
 import Topbar from './scenes/global/Topbar.tsx';
-import Dashboard from './scenes/dashboard';
+import Downloads from './scenes/downloads';
 import { Route, Routes } from 'react-router-dom';
 import Leftbar, { LeftbarProvider } from './scenes/global/Leftbar.tsx';
 import Config from './scenes/config';
@@ -19,7 +19,7 @@ function App() {
             <main className="content">
               <Topbar/>
               <Routes>
-                <Route path="/" element={ <Dashboard/> }/>
+                <Route path="/" element={ <Downloads/> }/>
                 <Route path="/config" element={ <Config/> }/>
               </Routes>
             </main>

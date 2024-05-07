@@ -13,6 +13,7 @@ const Topbar = () => {
   const colorMode = useContext(ColorModeContext);
   const [isCollapsed, setCollapsed] = useLeftbar();
 
+  console.log(theme.palette.mode, colors.primary[900]);
   return (
     <Box sx={ { display: 'flex', justifyContent: 'space-between', p: 1 } }>
       {/* Search */ }
@@ -24,7 +25,7 @@ const Topbar = () => {
         >
           <MenuOutlinedIcon/>
         </IconButton>
-        <Box sx={ { display: 'flex', backgroundColor: colors.primary[900], borderRadius: '3px', marginLeft: 1 } }>
+        <Box sx={ { display: 'flex', backgroundColor: colors.primary[theme.palette.mode === 'dark' ? 900 : 1000], borderRadius: '3px', marginLeft: 1 } }>
           <InputBase sx={ { ml: 2, flex: 1 } } placeholder="Search"/>
           <IconButton type="button" sx={ { p: 1 } }>
             <SearchIcon/>

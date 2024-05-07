@@ -28,25 +28,8 @@ const navItems: NavItem[] = [
     to: '/',
   },
   {
-    title: 'Put.io',
-    items: [
-      {
-        title: 'Overview',
-        to: '/putio',
-      },
-      {
-        title: 'Transfers',
-        to: '/putio/transfers',
-      },
-      {
-        title: 'Create Download Target',
-        to: '/putio/targets/download',
-      },
-      {
-        title: 'Create Upload Target',
-        to: '/putio/targets/upload',
-      },
-    ],
+    title: 'Transfers',
+    to: '/putio/transfers',
   },
   {
     title: 'Config',
@@ -215,24 +198,25 @@ const Leftbar = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const accent1 = colors.accent1[theme.palette.mode === 'dark' ? 400 : 300];
   const menuItemStyles: MenuItemStyles = {
     root: ({ active }) => ({
       fontSize: '13px',
       fontWeight: 400,
       borderRight: isCollapsed ? 0 : (active ? `3px solid ${ colors.primary[500] }` : 'none'),
-      borderColor: colors.accent1[500],
+      borderColor: accent1,
       borderWidth: 2,
     }),
     button: {
       '&:hover': {
-        backgroundColor: colors.primary[500],
+        backgroundColor: theme.palette.mode === 'dark' ? `${colors.accent1[700]}18` : `${colors.accent1[500]}15`,
       },
     },
     icon: ({ active }) => ({
-      color: active ? colors.accent1[400] : colors.grey[200],
+      color: active ? accent1 : colors.grey[200],
     }),
     label: ({ open, active }) => ({
-      color: active ? colors.accent1[400] : colors.grey[200],
+      color: active ? accent1 : colors.grey[200],
       fontWeight: open || active ? 600 : undefined,
     }),
     subMenuContent: {
@@ -252,7 +236,7 @@ const Leftbar = () => {
         [`.${ sidebarClasses.container }`]: {
           background: `${ colors.primary[400] }`,
         },
-        borderColor: colors.primary[500],
+        borderColor: colors.primary[theme.palette.mode === 'dark' ? 500 : 900],
       } }
     >
       <StyledSidebarHeader>
