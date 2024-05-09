@@ -7,6 +7,18 @@ import { Transfer } from '@putdotio/api-client';
 import { PutioService } from '../../putio';
 
 const putioUploadEndpoint = 'https://upload.put.io/v2/files/upload';
+type PutioError = {
+  error_id: null;
+  error_message: string;
+  error_type: string;
+  error_uri: string;
+  extra: {
+    existing_id: number;
+  };
+  status: string;
+  status_code: number;
+}
+
 
 @Injectable()
 export class UploaderService {
@@ -25,11 +37,15 @@ export class UploaderService {
     return false;
   }
 
+  isPutioError(err: AxiosError): err is AxiosError<PutioError> {
+    return (err.response?.data as PutioError)?.error_id !== undefined;
+  }
+
   /**
    * Create an upload to put.io in the specified folder (targetId)
    * @param dto
    */
-  async createUpload(dto: CreateUploadDto): Promise<Transfer> {
+  async createUpload(dto: CreateUploadDto): Promise<Transfer | null> {
     try {
       const fileStream = fs.createReadStream(dto.file);
       const formData = new FormData();
@@ -49,7 +65,20 @@ export class UploaderService {
       return r.data.transfer as Transfer;
     } catch (err) {
       const error = err as AxiosError;
-      this.logger.error(`Create Upload Failed (${error.message})`);
+      if (error.response.status === 400) {
+        const putioError: PutioError = error.response.data as PutioError;
+        if (putioError.error_type === 'TRANSFER_ALREADY_ADDED') {
+          this.logger.log(`${putioError.error_message} Retrieving transfer ${putioError.extra.existing_id}...`);
+          return await this.putioService.getTransfer(putioError.extra.existing_id);
+        }
+
+        this.logger.error(`Create Upload Failed (${error.message}) [${putioError.error_message}]`);
+      } else if (this.isPutioError(error)) {
+        this.logger.error(`Create Upload Failed (${error.message}) [${error.response.data.error_message}]`);
+      } else {
+        this.logger.error(`Create Upload Failed (${error.message})`);
+      }
+
       throw error;
     }
   }

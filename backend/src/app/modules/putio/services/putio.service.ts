@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import PutioAPIClient, { IFile, IPutioAPIClientResponse } from '@putdotio/api-client';
+import PutioAPIClient, { IFile, IPutioAPIClientResponse, Transfer } from '@putdotio/api-client';
 import axios from 'axios';
 import { memfs } from 'memfs';
 import { Volume } from 'memfs/lib/volume';
@@ -37,6 +37,17 @@ export class PutioService {
     }
 
     return this.api;
+  }
+
+  async getTransfer(id: number): Promise<Transfer> {
+    try {
+      const api = await this.getApi();
+      const transfers = await this.rateLimitSafeCall(async () => api.Transfers.Get(id));
+      return transfers.transfer;
+    } catch (err) {
+      this.logger.error(`Error while attempting to get transfer ${ id } (${ err.error_message })`);
+      return null;
+    }
   }
 
   async getFile(id: number): Promise<IFile> {
