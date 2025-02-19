@@ -51,5 +51,5 @@ else
 fi
 
 # Execute the CMD from Dockerfile and capture its exit code
-cd /app
-node main
+cd /src
+exec "$@"

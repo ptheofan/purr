@@ -112,6 +112,10 @@ export class AppConfigService {
   constructor(
     private readonly configService: ConfigService,
   ) {
+    this.logger.verbose('Loading configuration files in the following order...');
+    getEnvFilePaths().forEach((source, idx) => {
+      this.logger.verbose(`    ${idx}. ${source}`);
+    });
     this.loadEnvConfig();
     const validation = configSchema.safeParse(this);
     if (validation.success === false) {
@@ -126,10 +130,6 @@ export class AppConfigService {
 
     // Pretty print the configuration
     this.logger.verbose(`Configuration loaded:`);
-    this.logger.verbose('  - Configuration files used:');
-    getEnvFilePaths().forEach((source, idx) => {
-      this.logger.verbose(`    ${idx}. ${source}`);
-    });
     this.logger.verbose(`  - Port: ${this.port}`);
     this.logger.verbose(`  - Host: ${this.host}`);
     this.logger.verbose(`  - Put.io Client ID: ${this.putioClientId}`);

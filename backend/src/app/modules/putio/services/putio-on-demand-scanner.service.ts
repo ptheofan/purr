@@ -39,14 +39,13 @@ export class PutioOnDemandScannerService implements OnModuleInit {
         this.logger.log(`Adding to Download Manager - ${file.name}`);
         const vfs = await this.putioService.getVolume(file.id);
         if (!vfs) {
-          return;
+          continue;
         }
 
         rVal.push(file.id);
         await this.dmService.addVolume(vfs, target.path);
         if (!await this.dmService.groupExists(file.id)) {
-          this.logger.log(`Failed to add group ${file.id} could not be added to the Download Manager - ${file.name}`);
-          return;
+          this.logger.error(`Failed to add group ${file.id} could not be added to the Download Manager - ${file.name}`);
         }
       }
     }

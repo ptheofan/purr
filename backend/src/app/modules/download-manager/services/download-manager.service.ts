@@ -196,6 +196,9 @@ export class DownloadManagerService {
       });
     });
 
+    // Group is now initialized and ready.
+    group.state = GroupState.Ready;
+
     return {
       success: true,
       groups: 1,

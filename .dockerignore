@@ -19,3 +19,7 @@ npm-debug.log
 /data
 .github
 dist
+
+# Exclude any local configuration files
+.env
+.env.local

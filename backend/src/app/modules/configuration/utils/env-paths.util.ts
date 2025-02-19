@@ -2,7 +2,8 @@ import * as path from 'path'
 import * as fs from 'fs'
 import { fileExistsSync } from 'tsconfig-paths/lib/filesystem'
 
-const envFiles = ['.env', process.env.NODE_ENV && `.env.${ process.env.NODE_ENV }`, '.env.local'];
+// 1st file in the array will be loaded last overriding all other files
+const envFiles = ['.env.local', process.env.NODE_ENV && `.env.${ process.env.NODE_ENV }`, '.env'];
 
 function isMonorepoRoot(directory: string): boolean {
   try {
