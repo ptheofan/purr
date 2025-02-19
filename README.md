@@ -112,3 +112,27 @@ We are using https://reactrouter.com/en/main (react-router-dom)
 
 ## Charts
 We are using https://nivo.rocks/
+
+
+### Build and Run Docker
+
+For dev env.
+```shell
+# Build as purr
+docker build -t purr .
+
+# 
+docker stop purr && docker rm purr && docker run -d -p 3000:3000 \
+  --env-file .env \
+  -v $(pwd)/../purr.github.data:/downloads \
+  --name purrito-container \
+  purrito:latest
+```
+
+For prod env.
+```shell
+docker buildx build --platform linux/amd64,linux/arm64 \
+  -t ptheofan/purrito:1.0.1 \
+  -t ptheofan/purrito:latest \
+  --push .
+```
