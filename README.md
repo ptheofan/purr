@@ -114,9 +114,14 @@ We are using https://reactrouter.com/en/main (react-router-dom)
 We are using https://nivo.rocks/
 
 
-### Build and Run Docker
+## Build and Run Docker
+All environment variables with default values and extensive comments can be found in the `.env.example` file.
 
-For dev env.
+### Build and Run dev env.
+
+Build and run on your laptop if you need to debug or test things with regard to the folders structure in
+the docker environment.
+
 ```shell
 # Build as purr
 docker build -t purr .
@@ -129,10 +134,52 @@ docker stop purr && docker rm purr && docker run -d -p 3000:3000 \
   purrito:latest
 ```
 
-For prod env.
+### Build for prod env.
+This is the manual way of building it without using ci.
+
 ```shell
 docker build --platform linux/amd64,linux/arm64 \
   -t ptheofan/purrito:1.0.1 \
   -t ptheofan/purrito:latest \
   --push .
+```
+
+### Docker Compose
+Example docker-compose configuration. Ideally use some kind of reverse proxy in front of this service to provide
+https and with a nice domain. Otherwise put the url you will need on the browser when calling it, such as `http://192.168.1.34:3000`
+
+```yaml
+services:
+  purrito:
+    image: ptheofan/purrito:1.0.1
+    container_name: purrito
+    hostname: purrito
+    environment:
+      - CONSOLE_LOG_LEVELS=log,error,warn,debug,verbose,fatal
+      - PUID=1000
+      - PGID=1000
+      - HOST=http://localhost:3000
+      - PUTIO_CLIENT_ID=
+      - PUTIO_CLIENT_SECRET=
+      - PUTIO_AUTH=
+      - WATCHER_ENABLED=true
+      - WATCHER_TARGETS=/downloads:xxx-putio-folder-id
+      - DOWNLOADER_ENABLED=true
+      - DOWNLOADER_TARGETS=/downloads:xxx-putio-folder-id
+      - PUTIO_ENABLE_SOCKET=true
+      - PUTIO_ENABLE_WEBHOOKS=false
+      - PUTIO_CHECK_AT_STARTUP=true
+      - UI_PROGRESS_UPDATE_INTERVAL=333
+      - CONCURRENT_GROUPS=2
+      - CONCURRENT_SMALL_FILES=8
+      - CONCURRENT_LARGE_FILES=2
+      - DOWNLOADER_CHUNK_SIZE=8388608
+      - DOWNLOADER_PERFORMANCE_MONITORING_ENABLED=true
+      - DOWNLOADER_PERFORMANCE_MONITORING_TIME=10
+      - DOWNLOADER_PERFORMANCE_MONITORING_SPEED=
+    volumes:
+      - /my/downloads/path/on/host/machine:/downloads
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
 ```
