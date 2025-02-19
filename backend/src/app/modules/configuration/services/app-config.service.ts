@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, LogLevel } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config';
 import fs from 'fs';
 import { RuntimeException } from '@nestjs/core/errors/exceptions';
@@ -6,6 +6,7 @@ import { z, ZodIssue } from 'zod';
 import { TargetModel } from '../models';
 import * as process from 'process';
 import { prettyTime, prettyBytes } from '../../../helpers';
+import { getEnvFilePaths } from '../utils/env-paths.util'
 
 export const EnvKeys = {
   PORT: 'PORT',
@@ -31,7 +32,7 @@ export const EnvKeys = {
   DOWNLOADER_PERFORMANCE_MONITORING_SPEED: 'DOWNLOADER_PERFORMANCE_MONITORING_SPEED',
   DOWNLOADER_ARBITRARY_DOWNLOADS_ENABLED: 'DOWNLOADER_ARBITRARY_DOWNLOADS_ENABLED',
   DOWNLOADER_ARBITRARY_DOWNLOADS_ROOT_FOLDER: 'DOWNLOADER_ARBITRARY_DOWNLOADS_ROOT_FOLDER',
-
+  CONSOLE_LOG_LEVELS: 'CONSOLE_LOG_LEVELS',
 }
 
 const configSchema = z.object({
@@ -64,6 +65,7 @@ const configSchema = z.object({
   downloaderPerformanceMonitoringSpeed: z.number().default(0),
   downloaderArbitraryDownloadsEnabled: z.boolean().default(false),
   downloaderArbitraryDownloadsRootFolder: z.string().default('/mnt'),
+  consoleLogLevels: z.array(z.string()).default(['log', 'warn', 'error']),
 }).superRefine((data, ctx) => {
   if (data.downloaderArbitraryDownloadsEnabled) {
     // ensure downloaderArbitraryDownloadsRootFolder exists
@@ -105,6 +107,7 @@ export class AppConfigService {
   private _downloaderPerformanceMonitoringSpeed: number;
   private _downloaderArbitraryDownloadsEnabled: boolean;
   private _downloaderArbitraryDownloadsRootFolder: string;
+  private _consoleLogLevels: LogLevel[];
 
   constructor(
     private readonly configService: ConfigService,
@@ -122,39 +125,43 @@ export class AppConfigService {
     }
 
     // Pretty print the configuration
-    this.logger.log(`Configuration loaded:`);
-    this.logger.log(`  - Port: ${this.port}`);
-    this.logger.log(`  - Host: ${this.host}`);
-    this.logger.log(`  - Put.io Client ID: ${this.putioClientId}`);
-    this.logger.log(`  - Put.io Client Secret: ${this.putioClientSecret.slice(-4).padStart(this.putioClientSecret.length, '*')}`);
-    this.logger.log(`  - Put.io Auth: ${this.putioAuth.slice(-4).padStart(this.putioAuth.length, '*')}`);
-    this.logger.log(`  - Watcher Enabled: ${this.watcherEnabled}`);
-    this.logger.log(`  - Watcher Targets: ${this.watcherTargets.map((t) => t.path).join(', ')}`);
-    this.logger.log(`  - Put.io Watcher Socket: ${this.putioWatcherSocket}`);
-    this.logger.log(`  - Put.io Webhooks Enabled: ${this.putioWebhooksEnabled}`);
-    this.logger.log(`  - Put.io Check Cron Schedule: ${this.putioCheckCronSchedule}`);
-    this.logger.log(`  - Put.io Check At Startup: ${this.putioCheckAtStartup}`);
-    this.logger.log(`  - Downloader Enabled: ${this.downloaderEnabled}`);
-    this.logger.log(`  - Downloader Targets: ${this.downloaderTargets.map((t) => t.path).join(', ')}`);
-    this.logger.log(`  - Downloader Chunk Size: ${prettyBytes(this.downloaderChunkSize)}`);
-    this.logger.log(`  - UI Progress Update Interval: ${prettyTime(this.uiProgressUpdateInterval)}`);
-    this.logger.log(`  - Concurrent Groups: ${this.concurrentGroups}`);
-    this.logger.log(`  - Concurrent Small Files: ${this.concurrentSmallFiles}`);
-    this.logger.log(`  - Concurrent Large Files: ${this.concurrentLargeFiles}`);
-    this.logger.log(`  - Downloader Performance Monitoring Enabled: ${this.downloaderPerformanceMonitoringEnabled}`);
-    this.logger.log(`  - Downloader Performance Monitoring Time: ${prettyTime(this.downloaderPerformanceMonitoringTime)}`);
-    this.logger.log(`  - Downloader Performance Monitoring Speed: ${prettyBytes(this.downloaderPerformanceMonitoringSpeed)}`);
+    this.logger.verbose(`Configuration loaded:`);
+    this.logger.verbose('  - Configuration files used:');
+    getEnvFilePaths().forEach((source, idx) => {
+      this.logger.verbose(`    ${idx}. ${source}`);
+    });
+    this.logger.verbose(`  - Port: ${this.port}`);
+    this.logger.verbose(`  - Host: ${this.host}`);
+    this.logger.verbose(`  - Put.io Client ID: ${this.putioClientId}`);
+    this.logger.verbose(`  - Put.io Client Secret: ${this.putioClientSecret.slice(-4).padStart(this.putioClientSecret.length, '*')}`);
+    this.logger.verbose(`  - Put.io Auth: ${this.putioAuth.slice(-4).padStart(this.putioAuth.length, '*')}`);
+    this.logger.verbose(`  - Watcher Enabled: ${this.watcherEnabled}`);
+    this.logger.verbose(`  - Watcher Targets: ${this.watcherTargets.map((t) => t.path).join(', ')}`);
+    this.logger.verbose(`  - Put.io Watcher Socket: ${this.putioWatcherSocket}`);
+    this.logger.verbose(`  - Put.io Webhooks Enabled: ${this.putioWebhooksEnabled}`);
+    this.logger.verbose(`  - Put.io Check Cron Schedule: ${this.putioCheckCronSchedule}`);
+    this.logger.verbose(`  - Put.io Check At Startup: ${this.putioCheckAtStartup}`);
+    this.logger.verbose(`  - Downloader Enabled: ${this.downloaderEnabled}`);
+    this.logger.verbose(`  - Downloader Targets: ${this.downloaderTargets.map((t) => t.path).join(', ')}`);
+    this.logger.verbose(`  - Downloader Chunk Size: ${prettyBytes(this.downloaderChunkSize)}`);
+    this.logger.verbose(`  - UI Progress Update Interval: ${prettyTime(this.uiProgressUpdateInterval)}`);
+    this.logger.verbose(`  - Concurrent Groups: ${this.concurrentGroups}`);
+    this.logger.verbose(`  - Concurrent Small Files: ${this.concurrentSmallFiles}`);
+    this.logger.verbose(`  - Concurrent Large Files: ${this.concurrentLargeFiles}`);
+    this.logger.verbose(`  - Downloader Performance Monitoring Enabled: ${this.downloaderPerformanceMonitoringEnabled}`);
+    this.logger.verbose(`  - Downloader Performance Monitoring Time: ${prettyTime(this.downloaderPerformanceMonitoringTime)}`);
+    this.logger.verbose(`  - Downloader Performance Monitoring Speed: ${prettyBytes(this.downloaderPerformanceMonitoringSpeed)}`);
 
     // Pretty print the upload targets
-    this.logger.log(`  - Watcher Targets:`);
+    this.logger.verbose(`  - Watcher Targets:`);
     this.watcherTargets.forEach((target) => {
-      this.logger.log(`    - ${target.path} (${target.targetId})`);
+      this.logger.verbose(`    - ${target.path} (${target.targetId})`);
     });
 
     // Pretty print the download targets
-    this.logger.log(`  - Downloader Targets:`);
+    this.logger.verbose(`  - Downloader Targets:`);
     this.downloaderTargets.forEach((target) => {
-      this.logger.log(`    - ${target.path} (${target.targetId})`);
+      this.logger.verbose(`    - ${target.path} (${target.targetId})`);
     });
   }
 
@@ -188,6 +195,7 @@ export class AppConfigService {
     }
     this._downloaderArbitraryDownloadsEnabled = this.loadEnvBoolean(EnvKeys.DOWNLOADER_ARBITRARY_DOWNLOADS_ENABLED, false);
     this._downloaderArbitraryDownloadsRootFolder = this.loadEnvString(EnvKeys.DOWNLOADER_ARBITRARY_DOWNLOADS_ROOT_FOLDER, '/mnt');
+    this._consoleLogLevels = this.loadEnvArray<LogLevel>(EnvKeys.CONSOLE_LOG_LEVELS, ['log', 'warn', 'error']);
 
     // Validate Targets
     this._watcherTargets.forEach((target) => {
@@ -211,6 +219,11 @@ export class AppConfigService {
     return this.configService.get(name) || defaultValue;
   }
 
+  private loadEnvArray<T>(name: string, defaultValue?: T[]): T[] {
+    const value = this.configService.get(name);
+    return value ? value.split(',').map((v) => v.trim()) : defaultValue;
+  }
+
   private loadEnvBoolean(name: string, defaultValue?: boolean): boolean {
     const value = this.configService.get(name);
     return value ? value === 'true' : defaultValue;
@@ -231,6 +244,22 @@ export class AppConfigService {
     }
 
     return rVal;
+  }
+
+  get isDev(): boolean {
+    return this.configService.get('NODE_ENV') === 'development';
+  }
+
+  get isProd(): boolean {
+    return this.configService.get('NODE_ENV') === 'production';
+  }
+
+  get isTest(): boolean {
+    return this.configService.get('NODE_ENV') === 'test';
+  }
+
+  get consoleLogLevels(): LogLevel[] {
+    return this._consoleLogLevels;
   }
 
   get port(): number {

@@ -3,10 +3,13 @@ import { ConfigModule } from '@nestjs/config';
 import { ApiService, AppConfigService } from './services';
 import { AppConfigResolver } from './resolvers';
 import { PutioModule } from '../putio';
+import { getEnvFilePaths } from './utils/env-paths.util'
 
 @Module({
   imports: [
-    ConfigModule.forRoot(),
+    ConfigModule.forRoot({
+      envFilePath: getEnvFilePaths(),
+    }),
     forwardRef(() => PutioModule),
   ],
   controllers: [],
