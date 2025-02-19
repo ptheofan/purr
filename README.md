@@ -131,7 +131,7 @@ docker stop purr && docker rm purr && docker run -d -p 3000:3000 \
 
 For prod env.
 ```shell
-docker buildx build --platform linux/amd64,linux/arm64 \
+docker build --platform linux/amd64,linux/arm64 \
   -t ptheofan/purrito:1.0.1 \
   -t ptheofan/purrito:latest \
   --push .
