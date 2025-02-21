@@ -242,6 +242,8 @@ export class DownloadManagerService {
     // if all items are completed, mark the group as completed
     if (itemsCompletedCounter === items.length) {
       await this.updateGroupStatus(groupId, DownloadStatus.Completed);
+    } else {
+      await this.updateGroupStatus(groupId, DownloadStatus.Pending);
     }
 
     return { groupId };
