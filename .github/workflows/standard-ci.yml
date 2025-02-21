@@ -48,7 +48,7 @@ jobs:
       - run: npm -w backend run lint --if-present
 
   createAndPushDevImage:
-    name: Push Docker image to Docker Hub
+    name: Build and push purrito:dev to dockerhub
     needs: [unitTesting, lint]
     if: github.ref == 'refs/heads/master' && github.event_name == 'push'
     runs-on: ubuntu-latest
