@@ -28,6 +28,7 @@ import {
 } from './downloader.interface';
 import { SpeedTracker } from '../../../stats';
 import { RuntimeException } from '@nestjs/core/errors/exceptions';
+import { waitFor } from '../../../helpers/promises.helper'
 
 export interface ResumableDownloaderOpts {
   httpAgent?: http.Agent;
@@ -269,7 +270,7 @@ export class Downloader<T> implements IDownloader {
                     .join(', ') })`,
                 );
                 // Wait 1 second before restarting
-                await new Promise((resolve) => setTimeout(resolve, 1000));
+                await waitFor({ sec: 1 });
                 break;
               default:
                 this.debugOutput &&

@@ -124,7 +124,7 @@ export class PutioService {
           this.logger.log(
             `Rate limit reached (${ remaining }/${ limit }). Waiting for ${ waitTime } seconds before retrying.`,
           );
-          await new Promise((resolve) => setTimeout(resolve, waitTime * 1000));
+          await waitFor({ sec: waitTime });
         }
       }
     }
