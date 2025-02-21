@@ -5,6 +5,7 @@ import { memfs } from 'memfs';
 import { Volume } from 'memfs/lib/volume';
 import { RuntimeException } from '@nestjs/core/errors/exceptions';
 import { AppConfigService } from '../../configuration';
+import { waitFor } from '../../../helpers/promises.helper'
 
 
 @Injectable()
@@ -177,7 +178,7 @@ export class PutioService {
         this.logger.error(`Error while attempting to get download links for ${ putioIds.join(', ') } (${ err.error_message }) - ${ retries } retries remaining.`);
       }
       // sleep for 2 seconds before retrying
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      await waitFor({ sec: 2 });
     }
 
     throw new RuntimeException(`Failed to get download links for ${ putioIds.join(', ') } after ${ retries } attempts`);
