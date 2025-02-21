@@ -23,7 +23,7 @@ export class Item {
   // The download link for the file
   downloadLink?: string;
 
-  // The download status
+  // The download status, directly linked to the download manager
   status: DownloadStatus = DownloadStatus.Pending;
 
   // The error message if the status is error

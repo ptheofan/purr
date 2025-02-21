@@ -19,9 +19,13 @@ export class Group {
   // Resulting path will be `${ saveAt }/item.relativePath/item.name`
   saveAt: string;
 
-  // The download status
+  // The download status. This directly indicates what the group
+  // status is in the download manager.
   status: DownloadStatus = DownloadStatus.Pending;
 
   // The state of the group (initializing, ready, etc.)
+  // Adding and creating groups is a time-consuming process. This state
+  // helps to understand the current state of the group. A group should
+  // be processed only if the state is ready.
   state: GroupState = GroupState.Initializing;
 }
