@@ -1,8 +1,9 @@
 import { forwardRef, Inject, Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { PutioService } from './putio.service';
 import { createPutioSocketClient, EVENT_TYPE, PutioSocketClient } from '@putdotio/socket-client';
-import { AppConfigService, TargetModel } from '../../configuration';
+import { AppConfigService } from '../../configuration';
 import { DownloadManagerService } from '../../download-manager';
+import { TargetModel } from '../../info/models'
 
 @Injectable()
 export class PutioSocketWatcherService implements OnModuleInit {
