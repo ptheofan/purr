@@ -2,11 +2,16 @@ import { FragmentStatus } from '../dtos';
 
 
 export interface Fragment {
-  start: number;
-  end: number;
+  start: number;  // Inclusive start byte
+  end: number;    // Inclusive end byte
   status: FragmentStatus;
 }
 
+/**
+ * Ranges class is used to keep track of the ranges of the file that are downloaded.
+ * The start-end it produces are INCLUSIVE. If it says download 0-10 it means download bytes 0 to 10 inclusive.
+ * Thus, when specifying ranges to download, the end should be the last byte to download and should not subtract 1.
+ */
 export class Ranges {
   private _ranges: Fragment[] = [];
 

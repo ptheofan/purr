@@ -1,79 +1,68 @@
 import { Fragment, Ranges } from './ranges';
-import http from 'http';
-import https from 'https';
 import { Downloader } from './downloader';
-import { SpeedTracker } from '../../../stats';
-import { registerEnumType } from '@nestjs/graphql';
+import { Histogram, SpeedTracker } from '../../../stats'
+import { AxiosRequestConfig } from 'axios'
 
-export class DownloaderOpts<T> {
-  sourceObject: T
+export interface DownloaderOptions<T> {
+  // Core options
+  sourceObject: T;
   url: string;
   saveAs: string;
-  httpAgent?: http.Agent;
-  httpsAgent?: https.Agent;
+  axiosConfig?: Partial<AxiosRequestConfig>;
   fileSize?: number;
   workersCount?: number;
   chunkSize?: number;
-  serverSupportsRanges?: boolean;
-  progressUpdateInterval?: number; // ms
+
+  // Progress & callbacks
+  progressUpdateInterval?: number;
   progressCallback?: ProgressCallback;
   completedCallback?: CompletedCallback;
   errorCallback?: ErrorCallback;
-  status?: DownloaderStatus;
+  autoRestartCallback?: DownloaderAutoRestartCallback;
+  getResumeDataCallback?: GetResumeDataCallback;
+
+  // Performance monitoring
+  minSpeedThreshold?: number;
+  speedCheckInterval?: number;
+  speedCheckDuration?: number;
+
+  // Network resilience
+  maxRetries?: number;
+  initialRetryDelay?: number;
+  maxRetryDelay?: number;
+  networkCheckUrl?: string;
+
+  // State management
+  initialRanges?: Ranges;
+
+  // Debug options
   debugOutput?: boolean;
   disableLogging?: boolean;
-  autoRestartCallback?: DownloaderAutoRestartCallback;
 }
 
-export type DownloaderAutoRestartCallback = (downloader: Downloader<any>) => boolean;
-
-export enum DownloaderStatus {
-  RUNNING = 'running',
-  STOPPING = 'stopping',
-  STOPPED = 'stopped',
-  RESTARTING = 'restarting',
-  COMPLETED = 'completed',
-  ERROR = 'error',
-}
-
-export enum WorkerState {
-  RUNNING = 'running',
-  STOPPED = 'stopped',
-}
-
-registerEnumType(WorkerState, {
-  name: 'WorkerState',
-});
-
-export interface DownloaderStats {
+export interface DownloadProgress {
   timestamp: number;
   startedAt?: Date;
-  workersRestartedAt?: Date;
   downloadedBytes: number;
+  totalBytes?: number;
+  speed: number;
   speedTracker: SpeedTracker;
   ranges: Fragment[];
+  workersRestartedAt?: Date;
+  histogram?: Histogram;
+  workerStats: {
+    id: string;
+    speed: number;
+    downloadedBytes: number;
+    histogram?: Histogram;
+  }[];
 }
 
-export interface RangeStats {
-  start: number;
-  end: number;
-  downloadedBytes: number;
-}
-
-export interface WorkerStats {
-  id: string;
-  state: WorkerState;
-  timestamp: number;
-  speedTracker: SpeedTracker;
-  rangesCount: number;
-  downloadedBytes: number;
-  range?: RangeStats;
-}
-
-export type ProgressCallback = (downloader: IDownloader, stats: DownloaderStats, bytesSinceLastCall: number) => Promise<void> | void;
+export type ProgressCallback = (downloader: IDownloader, stats: DownloadProgress, bytesSinceLastCall: number) => Promise<void> | void;
 export type CompletedCallback = (downloader: IDownloader) => Promise<void> | void;
 export type GetResumeDataCallback = (downloader: IDownloader) => Promise<Ranges | undefined>;
 export type ErrorCallback = (downloader: IDownloader, error: Error) => Promise<void> | void;
+export type DownloaderAutoRestartCallback = (downloader: Downloader<any>) => boolean;
 
 export interface IDownloader {
 

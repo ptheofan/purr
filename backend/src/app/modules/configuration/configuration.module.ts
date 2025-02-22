@@ -1,8 +1,6 @@
-import { forwardRef, Module } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { ApiService, AppConfigService } from './services';
-import { AppConfigResolver } from './resolvers';
-import { PutioModule } from '../putio';
+import { AppConfigService } from './services';
 import { getEnvFilePaths } from './utils/env-paths.util'
 
 @Module({
@@ -10,11 +8,10 @@ import { getEnvFilePaths } from './utils/env-paths.util'
     ConfigModule.forRoot({
       envFilePath: getEnvFilePaths(),
     }),
-    forwardRef(() => PutioModule),
   ],
   controllers: [],
-  providers: [AppConfigService, AppConfigResolver, ApiService],
-  exports: [AppConfigService, AppConfigResolver],
+  providers: [AppConfigService],
+  exports: [AppConfigService],
 })
 export class ConfigurationModule {
 
