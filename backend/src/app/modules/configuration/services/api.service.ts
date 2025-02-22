@@ -1,13 +1,13 @@
-import { Injectable } from '@nestjs/common';
+import { forwardRef, Inject, Injectable } from '@nestjs/common';
+import { AppConfigService } from './app-config.service';
+import { AppConfigModel } from '../models';
 import { PutioService } from '../../putio';
-import { AppConfigModel } from '../models'
-import { AppConfigService } from '../../configuration'
 
 @Injectable()
 export class ApiService {
   constructor(
     private readonly appConfigService: AppConfigService,
-    private readonly putioService: PutioService,
+    @Inject(forwardRef(() => PutioService)) private readonly putioService: PutioService,
   ) {}
 
   async getAppConfig(): Promise<AppConfigModel> {

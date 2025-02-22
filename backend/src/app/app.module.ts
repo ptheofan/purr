@@ -7,7 +7,6 @@ import { ApolloServerPluginLandingPageLocalDefault } from '@apollo/server/plugin
 import { ConfigurationModule } from './modules/configuration';
 import { join } from 'path';
 import { ServeStaticModule } from '@nestjs/serve-static';
-import { InfoModule } from './modules/info'
 
 @Module({
   imports: [
@@ -30,7 +29,6 @@ import { InfoModule } from './modules/info'
       rootPath: join(__dirname, 'client'),
       exclude: ['/api(.*)', '/graphql(.*)'],
     }),
-    InfoModule,
   ],
   providers: [
     WatcherService,

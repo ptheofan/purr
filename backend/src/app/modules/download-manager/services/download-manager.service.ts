@@ -4,7 +4,7 @@ import { DownloadGroupsRepository, DownloadItemsRepository } from '../repositori
 import { crc32File, getFirstFileOrFolder, getMeta } from '../../../helpers';
 import { Group, Item } from '../entities';
 import { DownloadStatus, GroupState } from '../enums';
-import { Downloader, DownloaderFactory, DownloadProgress } from '../../downloader';
+import { Downloader, DownloaderFactory, DownloaderStats } from '../../downloader';
 import { Mutex } from 'async-mutex';
 import { PutioService } from '../../putio';
 import { RuntimeException } from '@nestjs/core/errors/exceptions';
@@ -46,7 +46,6 @@ export class DownloadManagerService {
   private totalBytesDownloaded: ITotalBytesDownloaded;
   private speedTracker: SpeedTracker;
   private progressUpdateIntervalId: NodeJS.Timeout | undefined;
-  private activeDownloaders = new Map<number, Downloader<Item>>();
 
   constructor(
     private readonly groupsRepo: DownloadGroupsRepository,
@@ -381,10 +380,6 @@ export class DownloadManagerService {
   }
 
   protected async download(item: Item, saveAs: string) {
-    if (this.activeDownloaders.has(item.id)) {
-      throw new Error(`Download already in progress for item ${item.id}`);
-    }
-
     if (!item.downloadLink) {
       // Get the download link from putio
       throw new RuntimeException(`Download link for item ${ item.id } is not available.`);
@@ -393,11 +388,12 @@ export class DownloadManagerService {
     await this.updateItemStatus(item.id, DownloadStatus.Downloading);
 
     try {
-      const downloader = await this.downloaderFactory.create<Item>({
+      const downloader = await this.downloaderFactory.create({
         sourceObject: item,
         url: item.downloadLink,
         saveAs: saveAs,
         progressUpdateInterval: this.appConfig.uiProgressUpdateInterval,
+        debugOutput: false,
         workersCount: item.size <= this.smallFileThreshold ? 1 : 4,
         fileSize: item.size,
         chunkSize: this.appConfig.downloaderChunkSize,
@@ -405,42 +401,34 @@ export class DownloadManagerService {
         progressCallback: this.progressCallback.bind(this),
         completedCallback: this.completedCallback.bind(this),
         errorCallback: this.errorCallback.bind(this),
-        // maxRetries: this.appConfig.maxRetries,
-        // initialRetryDelay: this.appConfig.initialRetryDelay,
-        // maxRetryDelay: this.appConfig.maxRetryDelay,
-        // networkCheckUrl: this.appConfig.networkCheckUrl,
       });
 
-      downloader.start()
+      downloader.download()
         .then(async () => {
-          this.activeDownloaders.delete(item.id);
           await this.updateItemStatus(item.id, DownloadStatus.Completed);
-          // try {
-          //   // await this.putioService.deleteFile(item.id);
-          // } catch (error) {
-          //   this.logger.error(`Downloader completed successfully but failed to delete the file ${ item.id } from putio.`, error);
-          // }
+          try {
+            // await this.putioService.deleteFile(item.id);
+          } catch (error) {
+            this.logger.error(`Downloader completed successfully but failed to delete the file ${ item.id } from putio.`, error);
+          }
           this.logger.debug(`Download ${ item.name } completed, calling START again.`)
           await this.start();
         })
         .catch(async (error) => {
-          this.activeDownloaders.delete(item.id);
-          await this.setItemError(item.id, error.error_message);
+          await this.updateItemStatus(item.id, DownloadStatus.Error);
           this.logger.error(`download ${ item.name } failed! ${ error.error_message }`, error.stack);
           this.logger.debug(`Download ${ item.name } failed, calling START again.`)
           await this.start();
         });
     } catch (error) {
-      this.logger.error(`Failed to create downloader for ${item.name}`, error);
-      await this.setItemError(item.id, error instanceof Error ? error.message : error as string);
+      this.logger.error(error);
+      await this.itemsRepo.update(item.id, {
+        status: DownloadStatus.Error,
+        error: error instanceof Error ? error.message : error as string
+      });
       this.logger.debug(`Download ${ item.name } failed, calling START again.`)
       await this.start();
     }
-  }
-
-  async setItemError(itemId: number, error: string) {
-    await this.updateItemStatus(itemId, DownloadStatus.Error);
-    await this.itemsRepo.update(itemId, { error });
   }
 
   async updateGroupStatus(groupId: number, status: DownloadStatus) {
@@ -509,12 +497,7 @@ export class DownloadManagerService {
       return false;
     }
 
-    const stats = downloader.getProgress();
-    if (!stats.workersRestartedAt && !stats.startedAt) {
-      return false;
-    }
-
-    if (!stats.workersRestartedAt && !stats.startedAt) {
+    if (!downloader.getStats().workersRestartedAt && !downloader.getStats().startedAt) {
       // Workers have not been started yet
       return false;
     }
@@ -522,7 +505,7 @@ export class DownloadManagerService {
     const timeElapsedThreshold = 1000 * this.appConfig.downloaderPerformanceMonitoringTime;
 
     // Time elapsed since last workers restart in ms
-    const since = stats.workersRestartedAt?.getTime() || stats.startedAt.getTime();
+    const since = downloader.getStats().workersRestartedAt?.getTime() || downloader.getStats().startedAt.getTime();
     const timeElapsed = Date.now() - since;
 
     // if time elapsed is over timeElapsedThreshold seconds do a speed check
@@ -531,7 +514,7 @@ export class DownloadManagerService {
       // this is to prevent the workers from being stuck on a slow connection
       // and never finishing the download
       const queryFrom: Date = new Date(Date.now() - 1000 * 10);
-      const speed = stats.speedTracker.query(queryFrom, new Date());
+      const speed = downloader.getStats().speedTracker.query(queryFrom, new Date());
       const speedThreshold = this.appConfig.downloaderPerformanceMonitoringSpeed;
       if (speed < speedThreshold) {
         return true;
@@ -541,7 +524,7 @@ export class DownloadManagerService {
     return false;
   }
 
-  progressCallback(downloader: Downloader<Item>, stats: DownloadProgress, bytesSinceLastCall: number) {
+  progressCallback(downloader: Downloader<Item>, stats: DownloaderStats, bytesSinceLastCall: number) {
     // Update download manager statistics
     this.speedTracker.update(Date.now(), bytesSinceLastCall);
     if (this.totalBytesDownloaded) {
@@ -566,10 +549,16 @@ export class DownloadManagerService {
         granularity: 1,
         values: histogram.values,
       },
-      workers: stats.workerStats.map((worker) => ({
+      workers: downloader.getWorkersStats().map((worker) => ({
         id: worker.id,
-        speed: worker.speed,
+        state: worker.state,
+        speed: Math.round(worker.speedTracker.query(from, now)),
         downloadedBytes: worker.downloadedBytes,
+        fragmentStats: {
+          start: worker.range?.start,
+          end: worker.range?.end,
+          downloadedBytes: worker.range?.downloadedBytes,
+        },
       })),
     } as ItemStatsDto);
   }
@@ -580,7 +569,7 @@ export class DownloadManagerService {
     const fileCRC = await crc32File(downloader.saveAs);
     if (fileCRC !== item['crc32']) {
       // CRC32 check failed, re-download the item
-      this.logger.warn(`CRC32 is ${fileCRC} but should have been ${ item.crc32 }. Download failed for ${ item.name } (${ item.id }), will retry download.`)
+      this.logger.warn(`CRC32 (${fileCRC} was expected ${ item.crc32 }) Check failed for ${ item.name } (${ item.id }), will retry download.`)
       // Delete the file from the disk
       fs.unlinkSync(downloader.saveAs);
       // Update the item status to pending
@@ -599,7 +588,7 @@ export class DownloadManagerService {
     }
 
     // Update item progress to completion
-    this.progressCallback(downloader, downloader.getProgress(), 0);
+    this.progressCallback(downloader, downloader.getStats(), 0);
   }
 
   async errorCallback(downloader: Downloader<Item>) {
@@ -608,6 +597,6 @@ export class DownloadManagerService {
     await this.updateItemStatus(item.id, DownloadStatus.Error);
 
     // Update item progress present
-    this.progressCallback(downloader, downloader.getProgress(), 0);
+    this.progressCallback(downloader, downloader.getStats(), 0);
   }
 }

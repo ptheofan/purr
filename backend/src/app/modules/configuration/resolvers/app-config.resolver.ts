@@ -1,6 +1,6 @@
 import { Query, Resolver } from '@nestjs/graphql';
-import { AppConfigModel } from '../models'
-import { ApiService } from '../services'
+import { AppConfigModel } from '../models';
+import { ApiService } from '../services';
 
 @Resolver(() => AppConfigModel)
 export class AppConfigResolver {

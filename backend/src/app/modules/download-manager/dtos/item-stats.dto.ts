@@ -1,6 +1,6 @@
 import { Field, Int, ObjectType } from '@nestjs/graphql';
 import { HistogramDto } from './histogram.dto';
-import { FragmentDto, FragmentStatus } from '../../downloader';
+import { FragmentDto, FragmentStatus, WorkerState } from '../../downloader';
 
 @ObjectType()
 export class FragmentStatsDto {
@@ -19,11 +19,17 @@ export class WorkerStatsDto {
   @Field(() => String)
   id: string;
 
+  @Field(() => WorkerState)
+  state: WorkerState;
+
   @Field(() => Int)
   speed: number;
 
   @Field(() => Int)
   downloadedBytes: number;
+
+  @Field(() => FragmentStatsDto, { nullable: true })
+  fragmentStats?: FragmentStatsDto;
 }
 
 @ObjectType()

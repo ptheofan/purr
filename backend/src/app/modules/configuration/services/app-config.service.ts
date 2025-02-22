@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import fs from 'fs';
 import { RuntimeException } from '@nestjs/core/errors/exceptions';
 import { z, ZodIssue } from 'zod';
-import { TargetModel } from '../../info/models';
+import { TargetModel } from '../models';
 import * as process from 'process';
 import { prettyTime, prettyBytes } from '../../../helpers';
 import { getEnvFilePaths } from '../utils/env-paths.util'
