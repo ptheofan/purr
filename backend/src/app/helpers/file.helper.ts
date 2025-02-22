@@ -1,11 +1,28 @@
-import fs from 'fs';
 import crc32 from 'crc/crc32';
 import * as path from 'path';
-
+import { createReadStream } from 'fs';
 
 // Function to compute CRC32 checksum of a file
 export async function crc32File(filePath: string) {
-  return crc32(fs.readFileSync(filePath)).toString(16);
+  return new Promise((resolve, reject) => {
+    const stream = createReadStream(filePath, {
+      highWaterMark: 1024 * 1024 // 1MB chunks
+    });
+
+    let crc = 0;
+
+    stream.on('data', (chunk) => {
+      crc = crc32(chunk, crc);
+    });
+
+    stream.on('end', () => {
+      resolve(crc.toString(16));
+    });
+
+    stream.on('error', (error) => {
+      reject(new Error(`Failed to calculate CRC32 for ${filePath}: ${error.message}`));
+    });
+  });
 }
 
 /**
@@ -26,7 +43,7 @@ export function restrictFolderToRoot(targetPath: string, root: string): string {
   rVal = path.resolve(rVal);
 
   if (!rVal.startsWith(root)) {
-    throw new Error(`Path ${targetPath} violates root folder ${root}.`);
+    throw new Error(`Path ${targetPath} is outside the root folder ${root}.`);
   }
 
   return rVal;
