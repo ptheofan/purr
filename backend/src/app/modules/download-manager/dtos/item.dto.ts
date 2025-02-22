@@ -1,5 +1,6 @@
 import { Field, Int, ObjectType } from '@nestjs/graphql';
 import { DownloadStatus } from '../enums';
+import { GraphQLBigInt } from 'graphql-scalars'
 
 @ObjectType('Item', { description: 'An item represents a file that should be downloaded.' })
 export class ItemDto {
@@ -12,7 +13,7 @@ export class ItemDto {
   @Field()
   name: string;
 
-  @Field(() => Int)
+  @Field(() => GraphQLBigInt)
   size: number;
 
   @Field({ nullable: true })

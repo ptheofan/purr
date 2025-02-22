@@ -12,5 +12,9 @@
         "client": "npm -w client run dev",
         "codegen": "npm run -w client codegen",
         "codegen:watch": "npm run -w client codegen:watch"
+    },
+    "dependencies": {
+        "graphql-scalars": "^1.24.1",
+        "json-bigint-patch": "^0.0.8"
     }
 }
