@@ -183,3 +183,27 @@ services:
       - "3000:3000"
     restart: unless-stopped
 ```
+
+## Shared Packages
+We have a shared package that is used by both the backend and the frontend. To ensure same version is used in all apps
+we install them in the root `package.json` and reference them in each app's `package.json` as a file dependency.
+
+for example in the root `package.json` we have
+```json
+{
+  "dependencies": {
+    "graphql-scalars": "^1.24.1",
+    "json-bigint-patch": "^0.0.8"
+  }
+}
+```
+
+and in the backend and client apps `package.json` we have
+```json
+{
+  "dependencies": {
+    "graphql-scalars": "*",
+    "json-bigint-patch": "*"
+  }
+}
+```
