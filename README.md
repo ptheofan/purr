@@ -134,13 +134,12 @@ docker stop purr && docker rm purr && docker run -d -p 3000:3000 \
   purrito:latest
 ```
 
-### Build for prod env.
+### Build docker manually
 This is the manual way of building it without using ci.
 
 ```shell
 docker build --platform linux/amd64,linux/arm64 \
-  -t ptheofan/purrito:1.0.1 \
-  -t ptheofan/purrito:latest \
+  -t ptheofan/purrito:dev \
   --push .
 ```
 

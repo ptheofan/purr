@@ -4,7 +4,6 @@ import { createReadStream } from 'fs';
 
 export async function crc32File(filePath: string) {
   return new Promise((resolve, reject) => {
-    // Read the entire file into a buffer first
     const chunks: Buffer[] = [];
 
     const stream = createReadStream(filePath, {
@@ -16,11 +15,10 @@ export async function crc32File(filePath: string) {
     });
 
     stream.on('end', () => {
-      // Concatenate all chunks into a single buffer
       const buffer = Buffer.concat(chunks);
-      // Calculate CRC32 on the complete buffer
       const crc = crc32(buffer);
-      resolve(crc.toString(16));
+      // Pad with zeros to 8 characters
+      resolve(crc.toString(16).padStart(8, '0'));
     });
 
     stream.on('error', (error) => {
