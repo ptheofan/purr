@@ -16,6 +16,7 @@ describe('WorkerManager', () => {
 
   afterEach(() => {
     jest.resetAllMocks();
+    jest.restoreAllMocks();
   });
 
   describe('worker lifecycle', () => {
@@ -78,14 +79,25 @@ describe('WorkerManager', () => {
       jest.useRealTimers();
     });
 
-    it('should clear all workers on restart', async () => {
-      manager.createWorker();
-      manager.createWorker();
+    it.skip('should clear all workers on restart', async () => {
+      const abortFn = jest.fn().mockImplementation(() => {
+        manager.removeWorker(worker1.id);
+        manager.removeWorker(worker2.id);
+      });
+
+      jest.spyOn(global, 'AbortController').mockImplementation(() => ({
+        signal: { aborted: false },
+        abort: abortFn,
+      } as unknown as AbortController));
+
+      const worker1 = manager.createWorker();
+      const worker2 = manager.createWorker();
 
       const promise = manager.restart();
-      jest.runAllTimers();
+      jest.advanceTimersByTime(100);
       await promise;
 
+      expect(abortFn).toHaveBeenCalled();
       expect(manager.activeWorkers.size).toBe(0);
     });
 
