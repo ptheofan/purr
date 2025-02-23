@@ -1,5 +1,4 @@
 import { Fragment, Ranges } from './ranges';
-import { Downloader } from './downloader';
 import { Histogram, SpeedTracker } from '../../../stats'
 import { AxiosRequestConfig } from 'axios'
 
@@ -54,16 +53,25 @@ export interface DownloadProgress {
     id: string;
     speed: number;
     downloadedBytes: number;
-    histogram?: Histogram;
   }[];
 }
 
-export type ProgressCallback = (downloader: IDownloader, stats: DownloadProgress, bytesSinceLastCall: number) => Promise<void> | void;
-export type CompletedCallback = (downloader: IDownloader) => Promise<void> | void;
-export type GetResumeDataCallback = (downloader: IDownloader) => Promise<Ranges | undefined>;
-export type ErrorCallback = (downloader: IDownloader, error: Error) => Promise<void> | void;
-export type DownloaderAutoRestartCallback = (downloader: Downloader<any>) => boolean;
+export interface WorkerStats {
+  id: string;
+  bytesDownloaded: number;
+  startTime: number;
+  lastUpdate: number;
+  speed: number;
+  retryCount: number;
+  nextRetryTime?: number;
+}
 
-export interface IDownloader {
+export type ProgressCallback = (downloader: DownloadCoordinatorInterface, stats: DownloadProgress, bytesSinceLastCall: number) => Promise<void> | void;
+export type CompletedCallback = (downloader: DownloadCoordinatorInterface) => Promise<void> | void;
+export type GetResumeDataCallback = (downloader: DownloadCoordinatorInterface) => Promise<Ranges | undefined>;
+export type ErrorCallback = (downloader: DownloadCoordinatorInterface, error: Error) => Promise<void> | void;
+export type DownloaderAutoRestartCallback = (downloader: DownloadCoordinatorInterface) => boolean;
+
+export interface DownloadCoordinatorInterface {
 
 }

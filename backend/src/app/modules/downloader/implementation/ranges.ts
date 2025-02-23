@@ -7,12 +7,24 @@ export interface Fragment {
   status: FragmentStatus;
 }
 
+export interface IRanges {
+  ranges: Fragment[];
+  setSize(newSize: number | undefined): void;
+  markAs(start: number, end: number, status: FragmentStatus): void;
+  findSequenceOfAtLeast(size: number, status: FragmentStatus): Fragment | undefined;
+  findFirst(status: FragmentStatus): Fragment | undefined;
+  toSaveData(): string;
+  changeAll(fromStatus: FragmentStatus, toStatus: FragmentStatus): void;
+  isFinite(): boolean;
+  count(status: FragmentStatus): number;
+}
+
 /**
  * Ranges class is used to keep track of the ranges of the file that are downloaded.
  * The start-end it produces are INCLUSIVE. If it says download 0-10 it means download bytes 0 to 10 inclusive.
  * Thus, when specifying ranges to download, the end should be the last byte to download and should not subtract 1.
  */
-export class Ranges {
+export class Ranges implements IRanges {
   private _ranges: Fragment[] = [];
 
   get ranges(): Fragment[] {

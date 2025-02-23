@@ -4,7 +4,7 @@ import { DownloadGroupsRepository, DownloadItemsRepository } from '../repositori
 import { crc32File, getFirstFileOrFolder, getMeta } from '../../../helpers';
 import { Group, Item } from '../entities';
 import { DownloadStatus, GroupState } from '../enums';
-import { Downloader, DownloaderFactory, DownloadProgress } from '../../downloader';
+import { DownloadFactory, DownloadProgress } from '../../downloader'
 import { Mutex } from 'async-mutex';
 import { PutioService } from '../../putio';
 import { RuntimeException } from '@nestjs/core/errors/exceptions';
@@ -14,6 +14,7 @@ import { AppConfigService } from '../../configuration';
 import { SpeedTracker } from '../../../stats';
 import { PublisherService } from './publisher.service';
 import { ItemStatsDto } from '../dtos';
+import { DownloadCoordinator } from '../../downloader'
 
 export interface IDownloadManagerSettings {
   concurrentLargeFiles?: number;
@@ -46,12 +47,12 @@ export class DownloadManagerService {
   private totalBytesDownloaded: ITotalBytesDownloaded;
   private speedTracker: SpeedTracker;
   private progressUpdateIntervalId: NodeJS.Timeout | undefined;
-  private activeDownloaders = new Map<number, Downloader<Item>>();
+  private activeDownloaders = new Map<number, DownloadCoordinator<Item>>();
 
   constructor(
     private readonly groupsRepo: DownloadGroupsRepository,
     private readonly itemsRepo: DownloadItemsRepository,
-    private readonly downloaderFactory: DownloaderFactory,
+    private readonly downloaderFactory: DownloadFactory,
     private readonly putioService: PutioService,
     private readonly appConfig: AppConfigService,
     private readonly pubService: PublisherService,
@@ -504,7 +505,7 @@ export class DownloadManagerService {
     return await this.groupsRepo.find((group) => group.id === id) !== undefined;
   }
 
-  downloadAutoRestartCallback(downloader: Downloader<any>): boolean {
+  downloadAutoRestartCallback(downloader: DownloadCoordinator<any>): boolean {
     if (!this.appConfig.downloaderPerformanceMonitoringEnabled) {
       return false;
     }
@@ -541,7 +542,7 @@ export class DownloadManagerService {
     return false;
   }
 
-  progressCallback(downloader: Downloader<Item>, stats: DownloadProgress, bytesSinceLastCall: number) {
+  progressCallback(downloader: DownloadCoordinator<Item>, stats: DownloadProgress, bytesSinceLastCall: number) {
     // Update download manager statistics
     this.speedTracker.update(Date.now(), bytesSinceLastCall);
     if (this.totalBytesDownloaded) {
@@ -574,7 +575,7 @@ export class DownloadManagerService {
     } as ItemStatsDto);
   }
 
-  async completedCallback(downloader: Downloader<Item>) {
+  async completedCallback(downloader: DownloadCoordinator<Item>) {
     const item = downloader.sourceObject;
     // CRC32 check
     const fileCRC = await crc32File(downloader.saveAs);
@@ -602,7 +603,7 @@ export class DownloadManagerService {
     this.progressCallback(downloader, downloader.getProgress(), 0);
   }
 
-  async errorCallback(downloader: Downloader<Item>) {
+  async errorCallback(downloader: DownloadCoordinator<Item>) {
     const item = downloader.sourceObject;
     this.logger.error(`Download failed for ${ item.name }`);
     await this.updateItemStatus(item.id, DownloadStatus.Error);

@@ -1,10 +1,10 @@
 import { Module } from '@nestjs/common';
-import { DownloaderFactory } from './factories';
+import { DownloadFactory } from './factories';
 
 @Module({
   imports: [],
   controllers: [],
-  providers: [DownloaderFactory],
-  exports: [DownloaderFactory],
+  providers: [DownloadFactory],
+  exports: [DownloadFactory],
 })
 export class DownloaderModule {}
