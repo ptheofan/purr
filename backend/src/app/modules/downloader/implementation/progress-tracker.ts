@@ -1,5 +1,5 @@
 import { SpeedTracker } from '../../../stats';
-import { IRanges, Ranges } from './ranges'
+import { IRanges } from './ranges'
 import { DownloadProgress, WorkerStats } from './downloader.interface'
 import { FragmentStatus } from '../dtos';
 
