@@ -2,20 +2,24 @@ import crc32 from 'crc/crc32';
 import * as path from 'path';
 import { createReadStream } from 'fs';
 
-// Function to compute CRC32 checksum of a file
 export async function crc32File(filePath: string) {
   return new Promise((resolve, reject) => {
+    // Read the entire file into a buffer first
+    const chunks: Buffer[] = [];
+
     const stream = createReadStream(filePath, {
       highWaterMark: 1024 * 1024 // 1MB chunks
     });
 
-    let crc = 0;
-
     stream.on('data', (chunk) => {
-      crc = crc32(chunk, crc);
+      chunks.push(Buffer.from(chunk));
     });
 
     stream.on('end', () => {
+      // Concatenate all chunks into a single buffer
+      const buffer = Buffer.concat(chunks);
+      // Calculate CRC32 on the complete buffer
+      const crc = crc32(buffer);
       resolve(crc.toString(16));
     });
 
