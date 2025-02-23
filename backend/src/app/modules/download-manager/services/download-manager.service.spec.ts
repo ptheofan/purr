@@ -4,7 +4,7 @@ import { DownloadGroupsRepository, DownloadItemsRepository } from '../repositori
 import { DownloadManagerService } from './download-manager.service';
 import { memfs } from 'memfs';
 import { DownloadStatus, GroupState } from '../enums';
-import { DownloaderFactory } from '../../downloader';
+import { DownloadFactory } from '../../downloader';
 import { Group, Item } from '../entities';
 import { PutioService } from '../../putio';
 import { AppConfigService } from '../../configuration';
@@ -84,7 +84,7 @@ describe('DownloadManagerService', () => {
         ConfigService,
         AppConfigService,
         DownloadManagerService,
-        DownloaderFactory,
+        DownloadFactory,
         DownloadGroupsRepository,
         DownloadItemsRepository,
         {
