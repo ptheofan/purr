@@ -2,21 +2,20 @@ import crc32 from 'crc/crc32';
 import * as path from 'path';
 import { createReadStream } from 'fs';
 
-export async function crc32File(filePath: string) {
+export async function crc32File(filePath: string): Promise<string> {
   return new Promise((resolve, reject) => {
-    const chunks: Buffer[] = [];
+    let crc = 0; // Start with initial CRC value
 
     const stream = createReadStream(filePath, {
       highWaterMark: 1024 * 1024 // 1MB chunks
     });
 
     stream.on('data', (chunk) => {
-      chunks.push(Buffer.from(chunk));
+      // Update CRC incrementally with each chunk
+      crc = crc32(Buffer.from(chunk), crc);
     });
 
     stream.on('end', () => {
-      const buffer = Buffer.concat(chunks);
-      const crc = crc32(buffer);
       // Pad with zeros to 8 characters
       resolve(crc.toString(16).padStart(8, '0'));
     });
