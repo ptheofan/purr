@@ -1,4 +1,4 @@
-import { Inject } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { PubSub } from 'graphql-subscriptions';
 import { PubKeys } from '../enums';
 import { RuntimeException } from '@nestjs/core/errors/exceptions';
@@ -10,10 +10,12 @@ import {
   ItemStatsDto,
   ItemStatusChangedDto
 } from '../dtos';
+import { PUB_SUB } from '../../subscriptions';
 
+@Injectable()
 export class PublisherService {
   constructor(
-    @Inject('PUB_SUB') private readonly pubSub: PubSub,
+    @Inject(PUB_SUB) private readonly pubSub: PubSub,
   ) {}
 
   async groupStateChanged(payload: GroupStateChangedDto): Promise<void> {

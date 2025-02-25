@@ -6,8 +6,7 @@ import { ApiService } from '../services'
 export class AppConfigResolver {
   constructor(
     private readonly apiService: ApiService,
-  ) {
-  }
+  ) {}
 
   @Query(() => AppConfigModel)
   async appConfig(): Promise<AppConfigModel> {

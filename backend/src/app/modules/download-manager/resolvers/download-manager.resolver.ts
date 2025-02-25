@@ -22,8 +22,7 @@ export class DownloadManagerResolver {
     private readonly pubService: PublisherService,
     private readonly groupMapper: GroupMapper,
     @Inject(PUB_SUB) private readonly pubSub: PubSub,
-  ) {
-  }
+  ) {}
 
   @Mutation(() => CreatePutioDownloadResultDto, { description: 'Create a new download from a put.io fileId' })
   async createDownloadFromPutio(
@@ -48,7 +47,14 @@ export class DownloadManagerResolver {
     }
 
     const vfs = await this.putioService.getVolume(putioId);
-    const { analysisCompletedPromise, ...result} = await this.downloadManagerService.addVolume(vfs, finalSaveAt);
+    if (!vfs) {
+      return {
+        success: false,
+        message: 'Failed to get volume from put.io.',
+      };
+    }
+
+    const { analysisCompletedPromise, ...result } = await this.downloadManagerService.addVolume(vfs, finalSaveAt);
 
     if (result.success === false) {
       return {
@@ -57,10 +63,20 @@ export class DownloadManagerResolver {
       };
     }
 
+    const group = await this.groupRepo.find(g => g.id === putioId);
+    if (!group) {
+      return {
+        success: false,
+        message: 'Group not found after creation.',
+      };
+    }
+
+    await this.pubService.groupAdded(this.groupMapper.entityToDto(group));
+
     if (result.items > 0) {
       analysisCompletedPromise.then(async () => {
         const updatedGroup = await this.groupRepo.find(g => g.id === putioId);
-        if (updatedGroup.state !== group.state) {
+        if (updatedGroup && updatedGroup.state !== group.state) {
           await this.pubService.groupStateChanged({
             id: updatedGroup.id,
             state: updatedGroup.state
@@ -70,11 +86,9 @@ export class DownloadManagerResolver {
       });
     }
 
-    const group = await this.groupRepo.find(g => g.id === putioId);
-    await this.pubService.groupAdded(this.groupMapper.entityToDto(group));
     return {
       success: true,
-      group,
+      group: this.groupMapper.entityToDto(group),
     };
   }
 

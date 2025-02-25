@@ -1,6 +1,6 @@
 import { forwardRef, Module } from '@nestjs/common';
 import { DownloadGroupsRepository, DownloadItemsRepository } from './repositories';
-import { DownloadManagerService } from './services';
+import { DownloadManagerService, SubtitlesService } from './services';
 import { DownloadFactory } from '../downloader';
 import { PutioModule } from '../putio';
 import { ConfigurationModule } from '../configuration';
@@ -18,7 +18,7 @@ import { GroupMapper, ItemMapper } from './mappers';
   controllers: [],
   providers: [
     DownloadManagerService,
-    DownloadGroupsRepository,
+    SubtitlesService,
     DownloadFactory,
     DownloadGroupsRepository,
     DownloadItemsRepository,
@@ -33,6 +33,7 @@ import { GroupMapper, ItemMapper } from './mappers';
     DownloadManagerService,
     DownloadGroupsRepository,
     DownloadItemsRepository,
+    SubtitlesService,
   ],
 })
 export class DownloadManagerModule {}
