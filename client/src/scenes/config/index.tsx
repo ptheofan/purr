@@ -148,4 +148,4 @@ const queryAppConfig = gql(/* GraphQL */ `
             }
         }
     }
-`);
+`)

@@ -6,6 +6,7 @@ import { Volume } from 'memfs/lib/volume';
 import { RuntimeException } from '@nestjs/core/errors/exceptions';
 import { AppConfigService } from '../../configuration';
 import { waitFor } from '../../../helpers/promises.helper'
+import { ceil } from 'lodash'
 
 
 @Injectable()
@@ -120,7 +121,7 @@ export class PutioService {
           const limit = parseInt(response.headers['x-ratelimit-limit']);
           const remaining = parseInt(response.headers['x-ratelimit-remaining']);
           const currentTime = new Date().getTime() / 1000;
-          const waitTime = resetTimestamp - currentTime;
+          const waitTime = ceil(resetTimestamp - currentTime);
           this.logger.log(
             `Rate limit reached (${ remaining }/${ limit }). Waiting for ${ waitTime } seconds before retrying.`,
           );

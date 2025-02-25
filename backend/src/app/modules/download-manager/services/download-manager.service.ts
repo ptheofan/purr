@@ -338,19 +338,15 @@ export class DownloadManagerService {
    * Start the download queue
    */
   async start() {
-    this.logger.debug('Starting download queue.')
     return startMutex.runExclusive(async () => {
-      this.logger.debug('Running start mutex.')
       try {
         const groups = await this.getDownloadGroupCandidates();
         if (groups.length === 0) {
-          this.logger.debug('Exiting start mutex - no groups to download.')
           return;
         }
 
         const items = await this.getDownloadItemCandidates(groups);
         if (items.length === 0) {
-          this.logger.debug('Exiting start mutex - no items to download.')
           return;
         }
 
@@ -366,7 +362,6 @@ export class DownloadManagerService {
         }
 
         // assign the download links to the items and start downloading them
-        this.logger.debug('in mutex - Starting download of items.')
         await Promise.all(items.map(async (item, index) => {
           items[index].downloadLink = links[index];
           const group = groups.find(group => group.id === items[index].groupId);
