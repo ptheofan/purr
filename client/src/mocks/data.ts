@@ -151,6 +151,212 @@ export const generateMockGroups = (): Group[] => [
         groupId: 4
       }
     ]
+  },
+  {
+    __typename: 'Group',
+    id: 5,
+    name: 'Software Development Bundle',
+    status: 'Downloading' as DownloadStatus,
+    state: 'active',
+    addedAt: new Date('2024-01-22T11:30:00Z').toISOString(),
+    saveAt: '/downloads/software',
+    items: [
+      // Level 1: Main folder structure
+      {
+        __typename: 'Item',
+        id: 9,
+        name: 'IDE',
+        size: '1073741824', // 1GB
+        status: 'Downloading' as DownloadStatus,
+        relativePath: 'IDE/',
+        error: null,
+        crc32: null,
+        downloadLink: 'https://example.com/ide.zip',
+        groupId: 5
+      },
+      {
+        __typename: 'Item',
+        id: 10,
+        name: 'Visual Studio Code',
+        size: '268435456', // 256MB
+        status: 'Completed' as DownloadStatus,
+        relativePath: 'IDE/Visual Studio Code/vscode-latest.dmg',
+        error: null,
+        crc32: 'B2C3D4E5',
+        downloadLink: 'https://example.com/vscode.dmg',
+        groupId: 5
+      },
+      {
+        __typename: 'Item',
+        id: 11,
+        name: 'JetBrains Toolbox',
+        size: '536870912', // 512MB
+        status: 'Downloading' as DownloadStatus,
+        relativePath: 'IDE/JetBrains/jetbrains-toolbox.exe',
+        error: null,
+        crc32: null,
+        downloadLink: 'https://example.com/jetbrains-toolbox.exe',
+        groupId: 5
+      },
+      {
+        __typename: 'Item',
+        id: 12,
+        name: 'IntelliJ IDEA',
+        size: '1073741824', // 1GB
+        status: 'Pending' as DownloadStatus,
+        relativePath: 'IDE/JetBrains/IntelliJ IDEA/idea-2024.1.tar.gz',
+        error: null,
+        crc32: null,
+        downloadLink: 'https://example.com/intellij.tar.gz',
+        groupId: 5
+      },
+      {
+        __typename: 'Item',
+        id: 13,
+        name: 'WebStorm',
+        size: '805306368', // 768MB
+        status: 'Pending' as DownloadStatus,
+        relativePath: 'IDE/JetBrains/WebStorm/webstorm-2024.1.tar.gz',
+        error: null,
+        crc32: null,
+        downloadLink: 'https://example.com/webstorm.tar.gz',
+        groupId: 5
+      },
+      // Level 1: Development Tools
+      {
+        __typename: 'Item',
+        id: 14,
+        name: 'Development Tools',
+        size: '2147483648', // 2GB
+        status: 'Downloading' as DownloadStatus,
+        relativePath: 'Development Tools/',
+        error: null,
+        crc32: null,
+        downloadLink: 'https://example.com/dev-tools.zip',
+        groupId: 5
+      },
+      {
+        __typename: 'Item',
+        id: 15,
+        name: 'Git',
+        size: '67108864', // 64MB
+        status: 'Completed' as DownloadStatus,
+        relativePath: 'Development Tools/Git/git-2.44.0.dmg',
+        error: null,
+        crc32: 'F6G7H8I9',
+        downloadLink: 'https://example.com/git.dmg',
+        groupId: 5
+      },
+      {
+        __typename: 'Item',
+        id: 16,
+        name: 'Docker Desktop',
+        size: '536870912', // 512MB
+        status: 'Downloading' as DownloadStatus,
+        relativePath: 'Development Tools/Docker/Docker Desktop.dmg',
+        error: null,
+        crc32: null,
+        downloadLink: 'https://example.com/docker.dmg',
+        groupId: 5
+      },
+      {
+        __typename: 'Item',
+        id: 17,
+        name: 'Node.js',
+        size: '134217728', // 128MB
+        status: 'Completed' as DownloadStatus,
+        relativePath: 'Development Tools/Runtimes/Node.js/node-v20.10.0.pkg',
+        error: null,
+        crc32: 'J0K1L2M3',
+        downloadLink: 'https://example.com/nodejs.pkg',
+        groupId: 5
+      },
+      {
+        __typename: 'Item',
+        id: 18,
+        name: 'Python',
+        size: '268435456', // 256MB
+        status: 'Downloading' as DownloadStatus,
+        relativePath: 'Development Tools/Runtimes/Python/python-3.12.0.pkg',
+        error: null,
+        crc32: null,
+        downloadLink: 'https://example.com/python.pkg',
+        groupId: 5
+      },
+      {
+        __typename: 'Item',
+        id: 19,
+        name: 'Postman',
+        size: '134217728', // 128MB
+        status: 'Pending' as DownloadStatus,
+        relativePath: 'Development Tools/API Testing/Postman/Postman-10.20.0.dmg',
+        error: null,
+        crc32: null,
+        downloadLink: 'https://example.com/postman.dmg',
+        groupId: 5
+      },
+      {
+        __typename: 'Item',
+        id: 20,
+        name: 'Insomnia',
+        size: '67108864', // 64MB
+        status: 'Pending' as DownloadStatus,
+        relativePath: 'Development Tools/API Testing/Insomnia/insomnia-8.6.1.dmg',
+        error: null,
+        crc32: null,
+        downloadLink: 'https://example.com/insomnia.dmg',
+        groupId: 5
+      },
+      // Level 1: Documentation
+      {
+        __typename: 'Item',
+        id: 21,
+        name: 'Documentation',
+        size: '536870912', // 512MB
+        status: 'Completed' as DownloadStatus,
+        relativePath: 'Documentation/',
+        error: null,
+        crc32: 'N4O5P6Q7',
+        downloadLink: 'https://example.com/docs.zip',
+        groupId: 5
+      },
+      {
+        __typename: 'Item',
+        id: 22,
+        name: 'API Reference',
+        size: '134217728', // 128MB
+        status: 'Completed' as DownloadStatus,
+        relativePath: 'Documentation/API Reference/api-docs.pdf',
+        error: null,
+        crc32: 'R8S9T0U1',
+        downloadLink: 'https://example.com/api-docs.pdf',
+        groupId: 5
+      },
+      {
+        __typename: 'Item',
+        id: 23,
+        name: 'User Manual',
+        size: '67108864', // 64MB
+        status: 'Completed' as DownloadStatus,
+        relativePath: 'Documentation/User Manual/user-manual.pdf',
+        error: null,
+        crc32: 'V2W3X4Y5',
+        downloadLink: 'https://example.com/user-manual.pdf',
+        groupId: 5
+      },
+      {
+        __typename: 'Item',
+        id: 24,
+        name: 'Tutorial Videos',
+        size: '3221225472', // 3GB
+        status: 'Downloading' as DownloadStatus,
+        relativePath: 'Documentation/Video Tutorials/tutorial-series.mp4',
+        error: null,
+        crc32: null,
+        downloadLink: 'https://example.com/tutorials.mp4',
+        groupId: 5
+      }
+    ]
   }
 ];
 

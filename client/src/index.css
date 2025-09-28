@@ -16,20 +16,25 @@
 
 html,
 body,
-#root,
-.app,
-.content {
+#root {
     height: 100%;
     width: 100%;
     font-family: 'Source Sans 3', sans-serif;
 }
+
+.content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
 .app {
     display: flex;
-    height: auto;
-    min-height: 100%;
+    height: 100vh;
     min-width: 100%;
     max-width: 100%;
     position: relative;
+    overflow: hidden;
 }
 ::-webkit-scrollbar {
     width: 10px;
