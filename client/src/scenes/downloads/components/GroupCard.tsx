@@ -1,19 +1,20 @@
 import { Card, CardContent, Typography, Box, Chip, Collapse, Divider } from '@mui/material';
-import { getFragmentData } from '../../../__generated__';
-import { GroupBasicInfoFragment, GroupWithItemsFragment } from '../../../fragments';
+import { getFragmentData, FragmentType } from '../../../__generated__';
+import { GroupBasicInfoFragment as GroupBasicInfoFragmentDoc, GroupWithItemsFragment as GroupWithItemsFragmentDoc } from '../../../fragments';
 import { groupItemsByParent } from './GroupItems';
 import GroupHeader from './GroupHeader';
 import GroupItems from './GroupItems';
 
 interface GroupCardProps {
-  group: GroupBasicInfoFragment & GroupWithItemsFragment;
+  group: FragmentType<typeof GroupBasicInfoFragmentDoc> & FragmentType<typeof GroupWithItemsFragmentDoc>;
   isExpanded: boolean;
   onToggle: () => void;
+  isLastItem?: boolean;
 }
 
-const GroupCard = ({ group, isExpanded, onToggle }: GroupCardProps) => {
-  const groupBasic = getFragmentData(GroupBasicInfoFragment, group);
-  const groupWithItems = getFragmentData(GroupWithItemsFragment, group);
+const GroupCard = ({ group, isExpanded, onToggle, isLastItem = false }: GroupCardProps) => {
+  const groupBasic = getFragmentData(GroupBasicInfoFragmentDoc, group);
+  const groupWithItems = getFragmentData(GroupWithItemsFragmentDoc, group);
 
   if (!groupWithItems.items || groupWithItems.items.length === 0) {
     return (
@@ -48,7 +49,7 @@ const GroupCard = ({ group, isExpanded, onToggle }: GroupCardProps) => {
   const groupedItems = groupItemsByParent(groupWithItems.items);
 
   return (
-    <Card sx={{ mb: 3 }}>
+    <Card sx={{ mb: isLastItem ? 0 : 3 }}>
       <CardContent>
         <GroupHeader 
           group={groupBasic}

@@ -1,11 +1,11 @@
 import { Box, Typography } from '@mui/material';
 import { useQuery, useSubscription } from '@apollo/client';
-import { GET_GROUPS, DOWNLOAD_MANAGER_STATS_SUBSCRIPTION, GROUP_ADDED_SUBSCRIPTION } from '../../queries';
+import { GET_GROUPS, GROUP_ADDED_SUBSCRIPTION } from '../../queries';
 import { getFragmentData } from '../../__generated__';
-import { GroupWithItemsFragment, GroupBasicInfoFragment, DownloadManagerStatsFragment } from '../../fragments';
-import { useState } from 'react';
+import { GroupWithItemsFragment, GroupBasicInfoFragment } from '../../fragments';
+import { useState, useEffect } from 'react';
+import { useTitleStore } from '../../stores/title.store';
 import { 
-  DownloadManagerStats, 
   NewGroupNotification, 
   GroupCard 
 } from './components';
@@ -13,9 +13,14 @@ import {
 
 const Downloads = () => {
   const { loading, error, data } = useQuery(GET_GROUPS);
-  const { data: statsData } = useSubscription(DOWNLOAD_MANAGER_STATS_SUBSCRIPTION);
   const { data: newGroupData } = useSubscription(GROUP_ADDED_SUBSCRIPTION);
   const [expandedGroups, setExpandedGroups] = useState<Record<number, boolean>>({});
+  const setTitle = useTitleStore((state) => state.setTitle);
+
+  // Set page title when component mounts
+  useEffect(() => {
+    setTitle('Downloads');
+  }, [setTitle]);
 
   const toggleGroup = (groupId: number) => {
     setExpandedGroups(prev => ({
@@ -34,14 +39,6 @@ const Downloads = () => {
       overflow: 'auto',
       height: '100%'
     }}>
-      <Typography variant="h4" gutterBottom>Downloads</Typography>
-      
-      {/* Stats Card */}
-      {statsData && (() => {
-        const stats = getFragmentData(DownloadManagerStatsFragment, statsData.downloadManagerStats);
-        return <DownloadManagerStats stats={stats} />;
-      })()}
-
       {/* New Group Notification */}
       {newGroupData && (() => {
         const group = getFragmentData(GroupBasicInfoFragment, newGroupData.groupAdded);
@@ -49,18 +46,17 @@ const Downloads = () => {
       })()}
 
       {/* Groups List */}
-      <Typography variant="h6" gutterBottom>Download Groups</Typography>
-      {data?.getGroups?.map((group) => {
+      {data?.getGroups?.map((group, index) => {
         const groupBasic = getFragmentData(GroupBasicInfoFragment, group);
-        const groupWithItems = getFragmentData(GroupWithItemsFragment, group);
         const isExpanded = expandedGroups[groupBasic.id] !== false; // Default to expanded
 
         return (
           <GroupCard
             key={groupBasic.id}
-            group={{ ...groupBasic, ...groupWithItems }}
+            group={group}
             isExpanded={isExpanded}
             onToggle={() => toggleGroup(groupBasic.id)}
+            isLastItem={index === data.getGroups.length - 1}
           />
         );
       })}
