@@ -14,6 +14,14 @@ export class DownloadGroupsRepository extends Repository<Group, 'id'> {
       return item.id === id;
   }
 
+  protected getKey(item: Group): number {
+    return item.id;
+  }
+
+  protected copyItem(item: Group): Group {
+    return { ...item, addedAt: new Date(item.addedAt) };
+  }
+
   async getSortOrderOf(id: number): Promise<number> {
     const index = this.data.findIndex(item => item.id === id);
     if (index === -1) {

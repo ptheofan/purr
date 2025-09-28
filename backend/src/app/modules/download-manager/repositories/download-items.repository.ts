@@ -13,4 +13,12 @@ export class DownloadItemsRepository extends Repository<Item, 'id'>{
   protected dataEquals(item: Item, id: number): boolean {
     return item.id === id;
   }
+
+  protected getKey(item: Item): number {
+    return item.id;
+  }
+
+  protected copyItem(item: Item): Item {
+    return { ...item };
+  }
 }
