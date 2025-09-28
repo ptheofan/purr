@@ -14,11 +14,17 @@ RUN npm ci
 # Copy the rest of the monorepo
 COPY ./ .
 
+# First build the backend
+RUN npm -w backend run build
+
+# Generate GraphQL schema
+RUN npm -w backend run generate-schema
+
+# Generate GraphQL types for client
+RUN CI=true npm run codegen
+
 # Build the client (Vite)
 RUN npm -w client run build
-
-# Build the backend
-RUN npm -w backend run build
 
 
 # Stage 2: Create final image

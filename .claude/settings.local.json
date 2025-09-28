@@ -37,7 +37,9 @@
       "Bash(npm -w backend run test -- --testPathPattern=src/app/modules/info/services/api.service.spec.ts)",
       "Bash(npm -w backend run test:cov -- --testPathPattern=src/app/helpers --silent)",
       "Bash(npm -w backend run test -- --testPathPattern=src/app/helpers/file.helper.spec.ts -t \"should fail intentionally\")",
-      "Bash(npm -w backend run test -- --testPathPattern=src/app/helpers/test-failure-demo.spec.ts)"
+      "Bash(npm -w backend run test -- --testPathPattern=src/app/helpers/test-failure-demo.spec.ts)",
+      "Bash(CI=true npm run codegen)",
+      "Bash(npm -w client run build)"
     ],
     "deny": [],
     "ask": []

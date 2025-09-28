@@ -22,15 +22,12 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - name: Get node version from package.json
-        run: |
-          echo "$(cat ./backend/package.json)" | jq .engines.node | xargs -I {} echo "nodeVersion="{} >> $GITHUB_ENV
-      - name: Use node version ${{ env.nodeVersion }} from package.json
+      - name: Use Node.js 24.6.0
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ env.nodeVersion }}
+          node-version: '24.6.0'
           cache: 'npm'
-      - run: npm -w backend ci
+      - run: npm ci
       - run: npm -w backend run test
 
   lint:
@@ -40,26 +37,82 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - name: Use Node.js 20.x
+      - name: Use Node.js 24.6.0
         uses: actions/setup-node@v4
         with:
-          node-version: '20.x'
-      - run: npm -w backend ci
+          node-version: '24.6.0'
+          cache: 'npm'
+      - run: npm ci
       - run: npm -w backend run lint --if-present
+      - run: npm -w client run lint --if-present
+
+  clientTesting:
+    name: Client Testing
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use Node.js 24.6.0
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24.6.0'
+          cache: 'npm'
+      - run: npm ci
+
+      # Generate GraphQL schema from backend
+      - name: Generate GraphQL schema
+        run: npm -w backend run generate-schema
+
+      # Generate GraphQL types for client
+      - name: Generate GraphQL types
+        run: CI=true npm run codegen
+
+      # Run client tests
+      - run: npm -w client run test --if-present
+
+  buildValidation:
+    name: Build Validation
+    runs-on: ubuntu-latest
+    needs: [unitTesting, lint]
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use Node.js 24.6.0
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24.6.0'
+          cache: 'npm'
+      - run: npm ci
+
+      # Build backend first
+      - name: Build backend
+        run: npm -w backend run build
+
+      # Generate GraphQL schema from backend
+      - name: Generate GraphQL schema
+        run: npm -w backend run generate-schema
+
+      # Generate GraphQL types for client
+      - name: Generate GraphQL types
+        run: CI=true npm run codegen
+
+      # Build client
+      - name: Build client
+        run: npm -w client run build
 
   createAndPushDevImage:
     name: Build and push purrito:dev to dockerhub
-    needs: [unitTesting, lint]
+    needs: [unitTesting, lint, clientTesting, buildValidation]
     if: github.ref == 'refs/heads/master' && github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
       - name: Check out the repo
         uses: actions/checkout@v4
 
-      - name: Set up Node.js 20.x
+      - name: Set up Node.js 24.6.0
         uses: actions/setup-node@v4
         with:
-          node-version: '20.x'
+          node-version: '24.6.0'
           cache: 'npm'
 
       - name: Log in to Docker Hub
