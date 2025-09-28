@@ -25,7 +25,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/42</span>
+                <span class='fraction'>0/43</span>
             </div>
         
             
@@ -46,7 +46,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/36</span>
+                <span class='fraction'>0/37</span>
             </div>
         
             
@@ -121,7 +121,9 @@
 <a name='L56'></a><a href='#L56'>56</a>
 <a name='L57'></a><a href='#L57'>57</a>
 <a name='L58'></a><a href='#L58'>58</a>
-<a name='L59'></a><a href='#L59'>59</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
+<a name='L59'></a><a href='#L59'>59</a>
+<a name='L60'></a><a href='#L60'>60</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -180,8 +182,9 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js"><span class="cstat-no" title="statement not covered" >import { Field, Int, ObjectType } from '@nestjs/graphql';</span>
+<span class="cstat-no" title="statement not covered" >import { GraphQLBigInt } from 'graphql-scalars';</span>
 <span class="cstat-no" title="statement not covered" >import { HistogramDto } from './histogram.dto';</span>
-<span class="cstat-no" title="statement not covered" >import { FragmentDto, FragmentStatus } from '../../downloader';</span>
+<span class="cstat-no" title="statement not covered" >import { FragmentDto } from '../../downloader';</span>
 &nbsp;
 @ObjectType()
 export <span class="cstat-no" title="statement not covered" >class <span class="cstat-no" title="statement not covered" ><span class="cstat-no" title="statement not covered" >FragmentStatsDto </span>{</span></span>
@@ -191,7 +194,7 @@ export <span class="cstat-no" title="statement not covered" >class <span class="
   @Field(<span class="fstat-no" title="function not covered" >() =</span>&gt; <span class="cstat-no" title="statement not covered" >Int)</span>
 <span class="cstat-no" title="statement not covered" >  end: number;</span>
 &nbsp;
-  @Field(<span class="fstat-no" title="function not covered" >() =</span>&gt; <span class="cstat-no" title="statement not covered" >FragmentStatus)</span>
+  @Field(<span class="fstat-no" title="function not covered" >() =</span>&gt; <span class="cstat-no" title="statement not covered" >GraphQLBigInt)</span>
 <span class="cstat-no" title="statement not covered" >  downloadedBytes: number;</span>
 }
 &nbsp;
@@ -200,10 +203,10 @@ export <span class="cstat-no" title="statement not covered" >class <span class="
   @Field(<span class="fstat-no" title="function not covered" >() =</span>&gt; <span class="cstat-no" title="statement not covered" >String)</span>
 <span class="cstat-no" title="statement not covered" >  id: string;</span>
 &nbsp;
-  @Field(<span class="fstat-no" title="function not covered" >() =</span>&gt; <span class="cstat-no" title="statement not covered" >Int)</span>
+  @Field(<span class="fstat-no" title="function not covered" >() =</span>&gt; <span class="cstat-no" title="statement not covered" >GraphQLBigInt)</span>
 <span class="cstat-no" title="statement not covered" >  speed: number;</span>
 &nbsp;
-  @Field(<span class="fstat-no" title="function not covered" >() =</span>&gt; <span class="cstat-no" title="statement not covered" >Int)</span>
+  @Field(<span class="fstat-no" title="function not covered" >() =</span>&gt; <span class="cstat-no" title="statement not covered" >GraphQLBigInt)</span>
 <span class="cstat-no" title="statement not covered" >  downloadedBytes: number;</span>
 }
 &nbsp;
@@ -218,13 +221,13 @@ export <span class="cstat-no" title="statement not covered" >class <span class="
   @Field(<span class="fstat-no" title="function not covered" >() =</span>&gt; <span class="cstat-no" title="statement not covered" >Date,</span> { nullable: true })
 <span class="cstat-no" title="statement not covered" >  restartedAt?: Date;</span>
 &nbsp;
-  @Field(<span class="fstat-no" title="function not covered" >() =</span>&gt; <span class="cstat-no" title="statement not covered" >Int)</span>
+  @Field(<span class="fstat-no" title="function not covered" >() =</span>&gt; <span class="cstat-no" title="statement not covered" >GraphQLBigInt)</span>
 <span class="cstat-no" title="statement not covered" >  downloadedBytes: number;</span>
 &nbsp;
-  @Field(<span class="fstat-no" title="function not covered" >() =</span>&gt; <span class="cstat-no" title="statement not covered" >Int)</span>
+  @Field(<span class="fstat-no" title="function not covered" >() =</span>&gt; <span class="cstat-no" title="statement not covered" >GraphQLBigInt)</span>
 <span class="cstat-no" title="statement not covered" >  bytesSinceLastEvent: number;</span>
 &nbsp;
-  @Field(<span class="fstat-no" title="function not covered" >() =</span>&gt; <span class="cstat-no" title="statement not covered" >Int)</span>
+  @Field(<span class="fstat-no" title="function not covered" >() =</span>&gt; <span class="cstat-no" title="statement not covered" >GraphQLBigInt)</span>
 <span class="cstat-no" title="statement not covered" >  speed: number;</span>
 &nbsp;
   @Field(<span class="fstat-no" title="function not covered" >() =</span>&gt; <span class="cstat-no" title="statement not covered" >[FragmentDto])</span>
@@ -244,7 +247,7 @@ export <span class="cstat-no" title="statement not covered" >class <span class="
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-09-28T10:02:05.999Z
+                at 2025-09-28T21:42:52.480Z
             </div>
         <script src="../../../../../prettify.js"></script>
         <script>

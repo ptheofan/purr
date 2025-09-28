@@ -1,7 +1,7 @@
 import { Field, Int, ObjectType } from '@nestjs/graphql';
 import { GraphQLBigInt } from 'graphql-scalars';
 import { HistogramDto } from './histogram.dto';
-import { FragmentDto, FragmentStatus } from '../../downloader';
+import { FragmentDto } from '../../downloader';
 
 @ObjectType()
 export class FragmentStatsDto {

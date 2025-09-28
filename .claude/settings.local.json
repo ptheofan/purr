@@ -25,7 +25,19 @@
       "mcp__chrome-devtools__performance_stop_trace",
       "mcp__chrome-devtools__list_network_requests",
       "mcp__chrome-devtools__get_network_request",
-      "mcp__chrome-devtools__navigate_page"
+      "mcp__chrome-devtools__navigate_page",
+      "WebFetch(domain:api.put.io)",
+      "WebFetch(domain:app.swaggerhub.com)",
+      "WebSearch",
+      "Bash(npm ls:*)",
+      "WebFetch(domain:git.frostfs.info)",
+      "Bash(npm -w backend run test -- --testPathPattern=src/app/modules/info/services/api.service.spec.ts --coverage)",
+      "Bash(npm -w backend run test -- --testPathPattern=src/app/modules/info/services/api.service.spec.ts --verbose)",
+      "Bash(npm -w backend run test -- --testPathPattern=src/app/modules/downloader/implementation/download-coordinator.spec.ts --verbose)",
+      "Bash(npm -w backend run test -- --testPathPattern=src/app/modules/info/services/api.service.spec.ts)",
+      "Bash(npm -w backend run test:cov -- --testPathPattern=src/app/helpers --silent)",
+      "Bash(npm -w backend run test -- --testPathPattern=src/app/helpers/file.helper.spec.ts -t \"should fail intentionally\")",
+      "Bash(npm -w backend run test -- --testPathPattern=src/app/helpers/test-failure-demo.spec.ts)"
     ],
     "deny": [],
     "ask": []

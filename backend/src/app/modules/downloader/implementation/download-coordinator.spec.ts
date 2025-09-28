@@ -56,6 +56,8 @@ describe('DownloadCoordinator', () => {
       configure: jest.fn(),
       openFileForWriting: jest.fn(),
       initializeFile: jest.fn(),
+      finalizeDownload: jest.fn().mockResolvedValue(undefined),
+      cleanupPartialFile: jest.fn().mockResolvedValue(undefined),
     } as any;
 
     mockNetworkManager = {
@@ -146,6 +148,7 @@ describe('DownloadCoordinator', () => {
 
       expect(mockProgressTracker.setStartTime).toHaveBeenCalled();
       expect(mockFileManager.openFileForWriting).toHaveBeenCalled();
+      expect(mockFileManager.finalizeDownload).toHaveBeenCalled();
       expect(mockOptions.completedCallback).toHaveBeenCalledWith(downloadCoordinator);
       expect(mockFileHandle.close).toHaveBeenCalled();
     });
@@ -159,6 +162,7 @@ describe('DownloadCoordinator', () => {
 
       await expect(downloadCoordinator.start()).rejects.toThrow(mockError);
       expect(mockOptions.errorCallback).toHaveBeenCalledWith(downloadCoordinator, mockError);
+      expect(mockFileManager.cleanupPartialFile).toHaveBeenCalled();
     });
 
     it('should dispose properly when disposed before start', async () => {

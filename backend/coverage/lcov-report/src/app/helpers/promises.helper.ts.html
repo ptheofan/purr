@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">18.18% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>2/11</span>
+                <span class='fraction'>11/11</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/5</span>
+                <span class='fraction'>5/5</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/2</span>
+                <span class='fraction'>2/2</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">11.11% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>1/9</span>
+                <span class='fraction'>9/9</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line low'></div>
+    <div class='status-line high'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -103,19 +103,19 @@
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">12x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">8x</span>
+<span class="cline-any cline-yes">4x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">4x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">12x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">9x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">type IWaitForOptions =
   | { ms: number; sec?: undefined; min?: undefined }
@@ -127,22 +127,22 @@
    * @param opts - The options for the wait
    * @returns A promise that resolves when the wait is complete
    */
-export const waitFor = <span class="fstat-no" title="function not covered" >(o</span>pts: IWaitForOptions): Promise&lt;void&gt; =&gt; {
+export const waitFor = (opts: IWaitForOptions): Promise&lt;void&gt; =&gt; {
   let ms: number;
   
-<span class="cstat-no" title="statement not covered" >  if (opts.ms !== undefined) {</span>
-<span class="cstat-no" title="statement not covered" >    ms = opts.ms;</span>
-  } else <span class="cstat-no" title="statement not covered" >if (opts.sec !== undefined) {</span>
-<span class="cstat-no" title="statement not covered" >    ms = opts.sec * 1000;</span>
+  if (opts.ms !== undefined) {
+    ms = opts.ms;
+  } else if (opts.sec !== undefined) {
+    ms = opts.sec * 1000;
   } else {
-<span class="cstat-no" title="statement not covered" >    ms = opts.min * 60000;</span>
+    ms = opts.min * 60000;
   }
   
-<span class="cstat-no" title="statement not covered" >  <span class="missing-if-branch" title="if path not taken" >I</span>if (ms &lt; 0) {</span>
-<span class="cstat-no" title="statement not covered" >    throw new Error('Wait time cannot be negative');</span>
+  if (ms &lt; 0) {
+    throw new Error('Wait time cannot be negative');
   }
   
-<span class="cstat-no" title="statement not covered" >  return new Promise(<span class="fstat-no" title="function not covered" >(r</span>esolve) =&gt; <span class="cstat-no" title="statement not covered" >setTimeout(resolve, ms))</span>;</span>
+  return new Promise((resolve) =&gt; setTimeout(resolve, ms));
 };
 &nbsp;</pre></td></tr></table></pre>
 
@@ -151,7 +151,7 @@ export const waitFor = <span class="fstat-no" title="function not covered" >(o</
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-09-28T10:02:05.999Z
+                at 2025-09-28T21:42:52.480Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>

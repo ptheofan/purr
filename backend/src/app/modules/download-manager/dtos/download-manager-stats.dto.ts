@@ -1,4 +1,4 @@
-import { Field, Int, ObjectType } from '@nestjs/graphql';
+import { Field, ObjectType } from '@nestjs/graphql';
 import { GraphQLBigInt } from 'graphql-scalars';
 import { HistogramDto } from './histogram.dto';
 

@@ -25,14 +25,14 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/289</span>
+                <span class='fraction'>0/293</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/81</span>
+                <span class='fraction'>0/82</span>
             </div>
         
             
@@ -46,7 +46,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/270</span>
+                <span class='fraction'>0/274</span>
             </div>
         
             
@@ -717,7 +717,15 @@
 <a name='L652'></a><a href='#L652'>652</a>
 <a name='L653'></a><a href='#L653'>653</a>
 <a name='L654'></a><a href='#L654'>654</a>
-<a name='L655'></a><a href='#L655'>655</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
+<a name='L655'></a><a href='#L655'>655</a>
+<a name='L656'></a><a href='#L656'>656</a>
+<a name='L657'></a><a href='#L657'>657</a>
+<a name='L658'></a><a href='#L658'>658</a>
+<a name='L659'></a><a href='#L659'>659</a>
+<a name='L660'></a><a href='#L660'>660</a>
+<a name='L661'></a><a href='#L661'>661</a>
+<a name='L662'></a><a href='#L662'>662</a>
+<a name='L663'></a><a href='#L663'>663</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -952,6 +960,8 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -966,7 +976,13 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -1485,7 +1501,7 @@ export class <span class="cstat-no" title="statement not covered" ><span class="
 &nbsp;
 <span class="cstat-no" title="statement not covered" >    await this.pubService.downloadManagerStats({</span>
       startedAt: this.totalBytesDownloaded.since,
-      lifetimeBytes: this.totalBytesDownloaded.bytes,
+      lifetimeBytes: this.totalBytesDownloaded.bytes.toString(),
       speed: Math.round(this.speedTracker.query(new Date(now.getTime() - this.speedQueryDuration), now)),
       histogram: histogramDto,
     });
@@ -1606,12 +1622,14 @@ export class <span class="cstat-no" title="statement not covered" ><span class="
     let itemsCompletedCounter = <span class="cstat-no" title="statement not covered" >0;</span>
 <span class="cstat-no" title="statement not covered" >    for (const item of items) {</span>
       const saveAs = <span class="cstat-no" title="statement not covered" >await this.computeDownloadSavePath(item, group);</span>
-      
+      const partialPath = <span class="cstat-no" title="statement not covered" >`${saveAs}.partial`;</span>
+&nbsp;
+      // Check for completed file
 <span class="cstat-no" title="statement not covered" >      <span class="missing-if-branch" title="if path not taken" >I</span>if (fs.existsSync(saveAs)) {</span>
         const crc32 = <span class="cstat-no" title="statement not covered" >await crc32File(saveAs);</span>
 <span class="cstat-no" title="statement not covered" >        if (crc32 !== item.crc32) {</span>
 <span class="cstat-no" title="statement not covered" >          this.logger.warn(</span>
-            `CRC32 check failed for ${item.name} (${item.id}). Expected: ${item.crc32}, got: ${crc32}. Will retry download.`
+            `Pre-download cleanup: CRC32 mismatch for existing file ${item.name} (${item.id}). Expected: ${item.crc32}, got: ${crc32}. Removing corrupted file.`
           );
 <span class="cstat-no" title="statement not covered" >          await this.itemsRepo.update(item.id, { status: DownloadStatus.Pending });</span>
 <span class="cstat-no" title="statement not covered" >          fs.unlinkSync(saveAs);</span>
@@ -1621,6 +1639,12 @@ export class <span class="cstat-no" title="statement not covered" ><span class="
 <span class="cstat-no" title="statement not covered" >          itemsCompletedCounter++;</span>
 <span class="cstat-no" title="statement not covered" >          await this.putioService.deleteItem(item.id);</span>
         }
+      }
+&nbsp;
+      // Clean up any partial files (resume not supported yet)
+<span class="cstat-no" title="statement not covered" >      <span class="missing-if-branch" title="if path not taken" >I</span>if (fs.existsSync(partialPath)) {</span>
+<span class="cstat-no" title="statement not covered" >        this.logger.debug(`Cleaning up partial file: ${partialPath}`);</span>
+<span class="cstat-no" title="statement not covered" >        fs.unlinkSync(partialPath);</span>
       }
     }
 &nbsp;
@@ -2032,7 +2056,7 @@ export class <span class="cstat-no" title="statement not covered" ><span class="
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-09-28T10:02:05.999Z
+                at 2025-09-28T21:42:52.480Z
             </div>
         <script src="../../../../../prettify.js"></script>
         <script>
