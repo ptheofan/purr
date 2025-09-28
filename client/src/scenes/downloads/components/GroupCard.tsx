@@ -20,7 +20,7 @@ const GroupCard = ({ group, isExpanded, onToggle, isLastItem = false }: GroupCar
   if (!groupWithItems.items || groupWithItems.items.length === 0) {
     return (
       <Card sx={{ mb: 2 }}>
-        <CardContent>
+        <CardContent sx={{ pb: 1 }}>
           <Typography variant="h6" >{groupBasic.name}</Typography>
           <Box sx={{ mt: 1 }}>
             <DownloadItemDisplay item={{
@@ -43,7 +43,7 @@ const GroupCard = ({ group, isExpanded, onToggle, isLastItem = false }: GroupCar
 
   return (
     <Card sx={{ mb: isLastItem ? 0 : 3 }}>
-      <CardContent>
+      <CardContent sx={{ pb: 1 }}>
         <GroupHeader 
           group={groupBasic}
           isExpanded={isExpanded}
