@@ -1,6 +1,5 @@
-import { List, ListItem, ListItemText, Typography, Box } from '@mui/material';
-import { prettyBytes } from '../../../helpers/pretty.helper';
-import StatusChip from './StatusChip';
+import { List, ListItem, ListItemText } from '@mui/material';
+import DownloadItemDisplay from './DownloadItemDisplay';
 
 interface DownloadItem {
   id: number;
@@ -25,24 +24,7 @@ const ItemList = ({ items }: ItemListProps) => {
         >
           <ListItemText
             primary={item.name}
-            secondary={
-              <Box>
-                <Typography variant="body2" component="div">
-                  Path: {item.relativePath}
-                </Typography>
-                <Typography variant="body2" component="div">
-                  Size: {prettyBytes(parseInt(item.size))}
-                </Typography>
-                <Typography variant="body2" component="div">
-                  Status: <StatusChip status={item.status} state='Ready' id={item.id} name={item.name} addedAt={null} saveAt="" />
-                </Typography>
-                {item.error && (
-                  <Typography variant="body2" color="error" component="div">
-                    Error: {item.error}
-                  </Typography>
-                )}
-              </Box>
-            }
+            secondary={<DownloadItemDisplay item={item} />}
           />
         </ListItem>
       ))}

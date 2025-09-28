@@ -1,4 +1,5 @@
 export { default as DownloadManagerStats } from './DownloadManagerStats';
+export { default as DownloadItemDisplay } from './DownloadItemDisplay';
 export { default as GroupCard } from './GroupCard';
 export { default as GroupHeader } from './GroupHeader';
 export { default as GroupItems, groupItemsByParent, getParentDirectory } from './GroupItems';

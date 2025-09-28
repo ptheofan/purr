@@ -4,7 +4,7 @@ import { GroupBasicInfoFragment as GroupBasicInfoFragmentDoc, GroupWithItemsFrag
 import { groupItemsByParent } from './GroupItems';
 import GroupHeader from './GroupHeader';
 import GroupItems from './GroupItems';
-import StatusChip from './StatusChip';
+import DownloadItemDisplay from './DownloadItemDisplay';
 
 interface GroupCardProps {
   group: FragmentType<typeof GroupBasicInfoFragmentDoc> & FragmentType<typeof GroupWithItemsFragmentDoc>;
@@ -21,17 +21,16 @@ const GroupCard = ({ group, isExpanded, onToggle, isLastItem = false }: GroupCar
     return (
       <Card sx={{ mb: 2 }}>
         <CardContent>
-          <Typography variant="h6">{groupBasic.name}</Typography>
+          <Typography variant="h6" >{groupBasic.name}</Typography>
           <Box sx={{ mt: 1 }}>
-            <Typography variant="body2" component="div">
-              Status: <StatusChip {...groupBasic} /> 
-            </Typography>
-            <Typography variant="body2" component="div">
-              Added: {new Date(groupBasic.addedAt).toLocaleString()}
-            </Typography>
-            <Typography variant="body2" component="div">
-              Save to: {groupBasic.saveAt}
-            </Typography>
+            <DownloadItemDisplay item={{
+              id: groupBasic.id,
+              name: groupBasic.name,
+              relativePath: groupBasic.saveAt,
+              size: 0,
+              status: groupBasic.status,
+              error: null,
+            }} showPath={false} showSize={false} showStatus={false} showError={false} />
           </Box>
           <Typography color="text.secondary" sx={{ mt: 1 }}>No items in this group</Typography>
         </CardContent>
