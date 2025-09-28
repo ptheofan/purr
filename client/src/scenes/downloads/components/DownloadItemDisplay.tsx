@@ -28,9 +28,6 @@ const DownloadItemDisplay = ({
 }: DownloadItemDisplayProps) => {
   return (
     <Box>
-      <Typography variant="h6" component="div" sx={{ color: 'white', fontSize: '0.75rem' }}>
-        {item.name}
-      </Typography>
       {showPath && (
         <Typography variant="body2" component="div">
           Path: {item.relativePath}
