@@ -8,6 +8,7 @@ import Leftbar, { LeftbarProvider } from './scenes/global/Leftbar.tsx';
 import Config from './scenes/config';
 import { useTitleStore } from './stores/title.store';
 import { useEffect } from 'react';
+import { ToastProvider } from './providers/ToastProvider';
 
 function App() {
   const [theme, colorMode] = useMode();
@@ -22,19 +23,21 @@ function App() {
     <ColorModeContext.Provider value={ colorMode }>
       <ThemeProvider theme={ theme }>
         <CssBaseline/>
-        <LeftbarProvider>
-          <div className="app">
-            <Leftbar/>
-            <main className="content">
-              <Topbar/>
-              <MobileStats/>
-              <Routes>
-                <Route path="/" element={ <Downloads/> }/>
-                <Route path="/config" element={ <Config/> }/>
-              </Routes>
-            </main>
-          </div>
-        </LeftbarProvider>
+        <ToastProvider>
+          <LeftbarProvider>
+            <div className="app">
+              <Leftbar/>
+              <main className="content">
+                <Topbar/>
+                <MobileStats/>
+                <Routes>
+                  <Route path="/" element={ <Downloads/> }/>
+                  <Route path="/config" element={ <Config/> }/>
+                </Routes>
+              </main>
+            </div>
+          </LeftbarProvider>
+        </ToastProvider>
       </ThemeProvider>
     </ColorModeContext.Provider>
   );

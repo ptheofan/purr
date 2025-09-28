@@ -2,13 +2,11 @@ import { Box, Typography } from '@mui/material';
 import { useQuery, useSubscription } from '@apollo/client';
 import { GET_GROUPS, GROUP_ADDED_SUBSCRIPTION } from '../../queries';
 import { getFragmentData } from '../../__generated__';
-import { GroupWithItemsFragment, GroupBasicInfoFragment } from '../../fragments';
+import { GroupBasicInfoFragment } from '../../fragments';
 import { useState, useEffect } from 'react';
 import { useTitleStore } from '../../stores/title.store';
-import { 
-  NewGroupNotification, 
-  GroupCard 
-} from './components';
+import { useToast } from '../../providers/ToastProvider';
+import { GroupCard } from './components';
 
 
 const Downloads = () => {
@@ -16,11 +14,20 @@ const Downloads = () => {
   const { data: newGroupData } = useSubscription(GROUP_ADDED_SUBSCRIPTION);
   const [expandedGroups, setExpandedGroups] = useState<Record<number, boolean>>({});
   const setTitle = useTitleStore((state) => state.setTitle);
+  const { showSuccess } = useToast();
 
   // Set page title when component mounts
   useEffect(() => {
     setTitle('Downloads');
   }, [setTitle]);
+
+  // Show toast notification when a new group is added
+  useEffect(() => {
+    if (newGroupData) {
+      const group = getFragmentData(GroupBasicInfoFragment, newGroupData.groupAdded);
+      showSuccess(`New download group added: ${group.name}`);
+    }
+  }, [newGroupData, showSuccess]);
 
   const toggleGroup = (groupId: number) => {
     setExpandedGroups(prev => ({
@@ -39,12 +46,6 @@ const Downloads = () => {
       overflow: 'auto',
       height: '100%'
     }}>
-      {/* New Group Notification */}
-      {newGroupData && (() => {
-        const group = getFragmentData(GroupBasicInfoFragment, newGroupData.groupAdded);
-        return <NewGroupNotification group={group} />;
-      })()}
-
       {/* Groups List */}
       {data?.getGroups?.map((group, index) => {
         const groupBasic = getFragmentData(GroupBasicInfoFragment, group);
