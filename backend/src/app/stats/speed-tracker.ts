@@ -1,143 +1,163 @@
 export type Histogram = {
-  // Unix timestamp in seconds
+  /** Unix timestamp in seconds */
   startEpoch: number;
-  // Unix timestamp in seconds
+  /** Unix timestamp in seconds */
   endEpoch: number;
-  // Speed values in bytes per second since the startEpoch until the endEpoch
+  /** Speed values in bytes per second since the startEpoch until the endEpoch */
   values: number[];
 }
 
 /**
- * Will keep track of speed data and provide methods to query the speed between two dates
- * The speed is calculated as the total data downloaded between two dates divided by the time between the two dates
- * The speed is returned in bytes per second
- * The data is stored in a map where the key is the epoch and the value is the data downloaded in that epoch
- * The epoch is calculated as the timestamp divided by 1000ms (time resolution of 1s)
+ * Tracks download speed data and provides methods to query speed between dates.
+ * Speed is calculated as total data downloaded divided by time elapsed.
+ * Data is stored with 1-second resolution (epoch = timestamp / 1000ms).
  */
 export class SpeedTracker {
   private readonly data: Map<number, number> = new Map();
   private totalData = 0;
+  private sortedEpochs: number[] = [];
 
   constructor(
-    // If resuming a download the initial offset is the amount of data already downloaded
+    /** Amount of data already downloaded when resuming */
     private readonly initialOffset: number = 0,
-    // if true, the update expects the dataLength to be the total data downloaded since the last update
-    // if false, the update expects the dataLength to be the data downloaded in total
+    /** Whether updates are incremental (true) or cumulative (false) */
     private readonly updatesInIncrements: boolean = true,
   ) {
     this.totalData = initialOffset;
+    this.sortedEpochs = [];
   }
 
   update(timestamp: number, dataLength: number): void {
     const epoch = Math.floor(timestamp / 1000);
-    if (!this.updatesInIncrements) {
-      dataLength -= this.totalData;
+    
+    // Calculate incremental data based on update mode
+    let incrementalData: number;
+    if (this.updatesInIncrements) {
+      // For incremental updates, dataLength is the incremental data for this update
+      incrementalData = dataLength;
     } else {
-      dataLength -= this.initialOffset;
+      // For cumulative updates, subtract the total data so far
+      incrementalData = dataLength - this.totalData;
     }
 
-    this.totalData += dataLength;
+    this.totalData += incrementalData;
 
-    if (this.data.has(epoch)) {
-      // eslint-disable-next-line
-      this.data.set(epoch, this.data.get(epoch)! + dataLength);
-    } else {
-      this.data.set(epoch, dataLength);
+    // Update or add data for this epoch
+    const existingData = this.data.get(epoch) ?? 0;
+    this.data.set(epoch, existingData + incrementalData);
+    
+    // Maintain sorted epochs array for performance
+    if (!this.sortedEpochs.includes(epoch)) {
+      this.sortedEpochs.push(epoch);
+      this.sortedEpochs.sort((a, b) => a - b);
     }
   }
 
   /**
-   * Query the speed between two dates.
-   * If from is not provided, the speed will be calculated from the first data point
-   * If until is not provided, the speed will be calculated until the last data point
+   * Query the average speed between two dates.
+   * @param from Start date (optional, defaults to first data point)
+   * @param until End date (optional, defaults to last data point)
+   * @returns Average speed in bytes per second
    */
   query(from?: Date, until?: Date): number {
     if (this.data.size === 0) {
       return 0;
     }
 
-    // Get the epochs as array from start to end
     const { firstEpoch, lastEpoch } = this.getStartEndEpochs(from, until);
-
-    // sum the values of the map
-    let sum = 0;
-    let epoch = firstEpoch;
-    while (epoch <= lastEpoch && epoch <= lastEpoch) {
-      if (this.data.has(epoch)) {
-        sum += this.data.get(epoch)!;
-      }
-      epoch++;
+    const timeSpan = lastEpoch - firstEpoch + 1;
+    
+    // Avoid division by zero or same start/end time
+    if (timeSpan <= 0) {
+      return 0;
     }
 
-    // return the sum in bytes per second
-    return sum / (lastEpoch - firstEpoch + 1);
+    // Sum data for all epochs in the range
+    let sum = 0;
+    for (let epoch = firstEpoch; epoch <= lastEpoch; epoch++) {
+      sum += this.data.get(epoch) ?? 0;
+    }
+
+    return sum / timeSpan;
   }
 
   /**
-   * Get the histogram of the speed between two dates.
-   * If from is not provided, the speed will be calculated from the first data point
-   * If until is not provided, the speed will be calculated until the last data point
-   * The histogram will be returned as an object with the start and end dates and an array of speeds
+   * Get a histogram of speed data between two dates.
+   * @param from Start date (optional, defaults to first data point)
+   * @param until End date (optional, defaults to last data point)
+   * @param granularity Time granularity in seconds (default: 1)
+   * @returns Histogram with start/end epochs and speed values
    */
   histogram(from?: Date, until?: Date, granularity: number = 1): Histogram {
-    // Get the epochs as array from start to end
     const { firstEpoch, lastEpoch } = this.getStartEndEpochs(from, until);
 
     if (this.data.size === 0) {
       return { startEpoch: firstEpoch, endEpoch: lastEpoch, values: [] };
     }
 
-    // extract the data from the map
+    // Group data by granularity
     const data: number[] = [];
-    let epoch = firstEpoch;
-    while (epoch <= lastEpoch) {
-      const epochIndex = Math.floor(epoch / granularity) - Math.floor(firstEpoch / granularity);
-      if (data[epochIndex] === undefined) data[epochIndex] = 0;
-
-      if (this.data.has(epoch)) {
-        data[epochIndex] += this.data.get(epoch) || 0;
-      }
-      epoch++;
+    const startGranularEpoch = Math.floor(firstEpoch / granularity);
+    const endGranularEpoch = Math.floor(lastEpoch / granularity);
+    
+    // Initialize array with correct size
+    for (let i = 0; i <= endGranularEpoch - startGranularEpoch; i++) {
+      data[i] = 0;
+    }
+    
+    for (let epoch = firstEpoch; epoch <= lastEpoch; epoch++) {
+      const granularEpoch = Math.floor(epoch / granularity);
+      const epochIndex = granularEpoch - startGranularEpoch;
+      
+      data[epochIndex] += this.data.get(epoch) ?? 0;
     }
 
     return { startEpoch: firstEpoch, endEpoch: lastEpoch, values: data };
   }
 
-  getStartEndEpochs(from?: Date, until?: Date): { firstEpoch: number, lastEpoch: number } {
-    // Get the epochs as array from start to end
-    const epochs = Array.from(this.data.keys()).sort((a, b) => a - b);
-    if (epochs.length === 0) {
+  private getStartEndEpochs(from?: Date, until?: Date): { firstEpoch: number, lastEpoch: number } {
+    if (this.sortedEpochs.length === 0) {
       return { firstEpoch: 0, lastEpoch: 0 };
     }
 
-    const firstEpoch = epochs[0];
-    const lastEpoch = epochs[epochs.length - 1];
+    const firstEpoch = this.sortedEpochs[0];
+    const lastEpoch = this.sortedEpochs[this.sortedEpochs.length - 1];
 
-    // floor the dates to the nearest second - ensure fromEpoch and untilEpoch are within the range of the data
+    // Constrain to data range and convert dates to epochs
     return {
-      firstEpoch: from ? Math.max(Math.floor(from.getTime() / 1000), firstEpoch) : epochs[0],
+      firstEpoch: from ? Math.max(Math.floor(from.getTime() / 1000), firstEpoch) : firstEpoch,
       lastEpoch: until ? Math.min(Math.floor(until.getTime() / 1000), lastEpoch) : lastEpoch,
     };
   }
 
   /**
-   * Forget all data older (<) than the provided date
+   * Remove all data older than the specified epoch.
+   * @param epochThreshold Epoch threshold (older epochs will be removed)
    */
-  forgetOlderThan(date: number): void {
-    const epochs = Array.from(this.data.keys()).sort((a, b) => a - b);
-    for (const epoch of epochs) {
-      if (epoch < date) {
+  forgetOlderThan(epochThreshold: number): void {
+    const epochsToRemove: number[] = [];
+    
+    for (const epoch of this.sortedEpochs) {
+      if (epoch < epochThreshold) {
         this.data.delete(epoch);
+        epochsToRemove.push(epoch);
+      } else {
+        // Since epochs are sorted, we can break early
+        break;
       }
     }
+    
+    // Remove deleted epochs from sorted array
+    this.sortedEpochs = this.sortedEpochs.filter(epoch => epoch >= epochThreshold);
   }
 
   /**
-   * After resuming a download, the speed tracker data need to be reset
+   * Reset all tracking data when resuming a download.
+   * This prevents incorrect speed calculations from previous session data.
    */
   resume(): void {
-    // When resuming the download, the speed tracker should be reset
-    // to avoid incorrect speed calculations when resuming the download
     this.data.clear();
+    this.sortedEpochs = [];
+    this.totalData = this.initialOffset;
   }
 }

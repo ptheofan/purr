@@ -11,6 +11,7 @@ import { AppConfigService } from '../../configuration';
 import { ConfigService } from '@nestjs/config';
 import * as process from 'process';
 import { PublisherService } from './publisher.service';
+import { ModuleMocker, MockMetadata } from 'jest-mock';
 
 type CreateItemsOptions = {
   groupId: number;
@@ -21,6 +22,8 @@ type CreateItemsOptions = {
   };
 };
 
+let globalItemId = 1;
+
 function createItems(opts: CreateItemsOptions): Item[] {
   const items: Item[] = [];
 
@@ -30,26 +33,26 @@ function createItems(opts: CreateItemsOptions): Item[] {
 
       for (let i = 0; i < (small || 0); i++) {
         items.push({
-          id: items.length + 1,
+          id: globalItemId++,
           groupId: opts.groupId,
-          name: `file${items.length + 1}.txt`,
+          name: `file${globalItemId - 1}.txt`,
           size: 100, // size for small files
           crc32: '123456',
           relativePath: '/',
-          downloadLink: `http://example.com/file${items.length + 1}.txt`,
+          downloadLink: `http://example.com/file${globalItemId - 1}.txt`,
           status: status as DownloadStatus,
         });
       }
 
       for (let i = 0; i < (large || 0); i++) {
         items.push({
-          id: items.length + 1,
+          id: globalItemId++,
           groupId: opts.groupId,
-          name: `file${items.length + 1}.txt`,
+          name: `file${globalItemId - 1}.txt`,
           size: 1024 * 1024 * 11, // size for large files
           crc32: '123456',
           relativePath: '/',
-          downloadLink: `http://example.com/file${items.length + 1}.txt`,
+          downloadLink: `http://example.com/file${globalItemId - 1}.txt`,
           status: status as DownloadStatus,
         });
       }
@@ -66,6 +69,8 @@ const countSmallLargeItems = (result: Item[], status: DownloadStatus[] = [Downlo
   return acc;
 }, { small: 0, large: 0 });
 
+const moduleMocker = new ModuleMocker(global);
+
 describe('DownloadManagerService', () => {
   // Set some values to process.env
   process.env.PUTIO_CLIENT_ID = '1234';
@@ -74,10 +79,15 @@ describe('DownloadManagerService', () => {
   process.env.UI_PROGRESS_UPDATE_INTERVAL = '0';
 
   let service: DownloadManagerService;
-  let groupsRepo: DownloadGroupsRepository;
-  let itemsRepo: DownloadItemsRepository;
+  let groupsRepo: jest.Mocked<DownloadGroupsRepository>;
+  let itemsRepo: jest.Mocked<DownloadItemsRepository>;
+  let appConfig: jest.Mocked<AppConfigService>;
+  let pubService: jest.Mocked<PublisherService>;
 
   beforeEach(async () => {
+    // Reset global item ID counter
+    globalItemId = 1;
+    
     const module: TestingModule = await Test.createTestingModule({
       imports: [],
       providers: [
@@ -102,24 +112,100 @@ describe('DownloadManagerService', () => {
           provide: PutioService,
           useValue: {
             getVolume: jest.fn().mockResolvedValue(new Volume()),
+            getDownloadLinks: jest.fn().mockResolvedValue([]),
+            deleteItem: jest.fn().mockResolvedValue(undefined),
           },
         },
       ],
-    }).compile();
+    })
+      .useMocker((token) => {
+        if (token === DownloadFactory) {
+          return {
+            create: jest.fn().mockResolvedValue({
+              start: jest.fn().mockResolvedValue(undefined),
+              getProgress: jest.fn().mockReturnValue({
+                startedAt: new Date(),
+                workersRestartedAt: null,
+                downloadedBytes: 0,
+                ranges: [],
+                workerStats: [],
+                speedTracker: {
+                  query: jest.fn().mockReturnValue(0),
+                  histogram: jest.fn().mockReturnValue({
+                    startEpoch: 0,
+                    endEpoch: 0,
+                    values: [],
+                  }),
+                },
+              }),
+            }),
+          };
+        }
+        if (typeof token === 'function') {
+          const mockMetadata = moduleMocker.getMetadata(token) as MockMetadata<any, any>;
+          const Mock = moduleMocker.generateFromMetadata(mockMetadata) as ObjectConstructor;
+          return new Mock();
+        }
+      })
+      .compile();
 
     service = module.get<DownloadManagerService>(DownloadManagerService);
+    groupsRepo = module.get<DownloadGroupsRepository>(DownloadGroupsRepository) as jest.Mocked<DownloadGroupsRepository>;
+    itemsRepo = module.get<DownloadItemsRepository>(DownloadItemsRepository) as jest.Mocked<DownloadItemsRepository>;
+    // downloaderFactory and putioService not needed since using mocks in providers
+    appConfig = module.get<AppConfigService>(AppConfigService) as jest.Mocked<AppConfigService>;
+    pubService = module.get<PublisherService>(PublisherService) as jest.Mocked<PublisherService>;
+
+    // Set default settings
     service.setSettings({
       concurrentLargeFiles: 2,
       concurrentSmallFiles: 8,
       concurrentGroups: 2,
-      smallFileThreshold: 1024 * 1024 * 10,   // 10MB
-    })
-    groupsRepo = module.get<DownloadGroupsRepository>(DownloadGroupsRepository);
-    itemsRepo = module.get<DownloadItemsRepository>(DownloadItemsRepository);
+      smallFileThreshold: 1024 * 1024 * 10, // 10MB
+    });
+
+    // Mock app config properties
+    Object.defineProperty(appConfig, 'uiProgressUpdateInterval', { value: 0, writable: true });
+    Object.defineProperty(appConfig, 'downloaderChunkSize', { value: 1024 * 1024, writable: true });
+    Object.defineProperty(appConfig, 'downloaderPerformanceMonitoringEnabled', { value: false, writable: true });
+    Object.defineProperty(appConfig, 'downloaderPerformanceMonitoringTime', { value: 30, writable: true });
+    Object.defineProperty(appConfig, 'downloaderPerformanceMonitoringSpeed', { value: 1024, writable: true });
   });
 
   it('should be defined', () => {
     expect(service).toBeDefined();
+  });
+
+  describe('setSettings and getSettings', () => {
+    it('should set and get settings correctly', () => {
+      const settings = {
+        concurrentLargeFiles: 3,
+        concurrentSmallFiles: 10,
+        concurrentGroups: 1,
+        smallFileThreshold: 1024 * 1024 * 5, // 5MB
+      };
+
+      service.setSettings(settings);
+      const retrievedSettings = service.getSettings();
+
+      expect(retrievedSettings).toEqual(settings);
+    });
+
+    it('should handle partial settings updates', () => {
+      const initialSettings = service.getSettings();
+      const partialSettings = {
+        concurrentLargeFiles: 5,
+        // Other settings should remain unchanged
+      };
+
+      service.setSettings(partialSettings);
+      const retrievedSettings = service.getSettings();
+
+      expect(retrievedSettings.concurrentLargeFiles).toBe(5);
+      expect(retrievedSettings.concurrentSmallFiles).toBe(initialSettings.concurrentSmallFiles);
+      expect(retrievedSettings.concurrentGroups).toBe(initialSettings.concurrentGroups);
+      expect(retrievedSettings.smallFileThreshold).toBe(initialSettings.smallFileThreshold);
+    });
   });
 
   describe('addVolume', () => {
@@ -224,6 +310,23 @@ describe('DownloadManagerService', () => {
       expect(group).toEqual([]);
       const items = await itemsRepo.getAll();
       expect(items).toEqual([]);
+    });
+  });
+
+  describe('groupExists', () => {
+    it('should return true if group exists', async () => {
+      const mockGroup = { id: 1, name: 'test', status: DownloadStatus.Pending, saveAt: '/test', addedAt: new Date(), state: GroupState.Ready };
+      jest.spyOn(groupsRepo, 'find').mockResolvedValue(mockGroup);
+
+      const result = await service.groupExists(1);
+      expect(result).toBe(true);
+    });
+
+    it('should return false if group does not exist', async () => {
+      jest.spyOn(groupsRepo, 'find').mockResolvedValue(undefined);
+
+      const result = await service.groupExists(999);
+      expect(result).toBe(false);
     });
   });
 
@@ -384,6 +487,7 @@ describe('DownloadManagerService', () => {
 
       const groups = await groupsRepo.filter(g => g.id === 2 || g.id === 3);
       const result = await service.getDownloadItemCandidates(groups);
+      
       // Expect the sum of Pending - Downloading capped by max items from group2 and group3
       expect(countSmallLargeItems(result, [DownloadStatus.Pending])).toEqual({ small: 6, large: 1 });
 
@@ -477,6 +581,131 @@ describe('DownloadManagerService', () => {
       items = await service.getDownloadItemCandidates(groups);
       expect(countSmallLargeItems(items, [DownloadStatus.Pending])).toEqual({ small: 0, large: 1 });
       expect(items[0].id).toEqual(7);
+    });
+  });
+
+  describe('downloadAutoRestartCallback', () => {
+    it('should return false when performance monitoring is disabled', () => {
+      Object.defineProperty(appConfig, 'downloaderPerformanceMonitoringEnabled', { value: false });
+      
+      const mockDownloader = {
+        getProgress: jest.fn().mockReturnValue({
+          startedAt: new Date(),
+          workersRestartedAt: null,
+          speedTracker: {
+            query: jest.fn().mockReturnValue(1000),
+          },
+        }),
+      };
+
+      const result = service.downloadAutoRestartCallback(mockDownloader as any);
+      expect(result).toBe(false);
+    });
+
+    it('should return false when workers have not started', () => {
+      Object.defineProperty(appConfig, 'downloaderPerformanceMonitoringEnabled', { value: true });
+      
+      const mockDownloader = {
+        getProgress: jest.fn().mockReturnValue({
+          startedAt: null,
+          workersRestartedAt: null,
+        }),
+      };
+
+      const result = service.downloadAutoRestartCallback(mockDownloader as any);
+      expect(result).toBe(false);
+    });
+
+    it('should return true when speed is below threshold', () => {
+      Object.defineProperty(appConfig, 'downloaderPerformanceMonitoringEnabled', { value: true });
+      Object.defineProperty(appConfig, 'downloaderPerformanceMonitoringTime', { value: 1 });
+      Object.defineProperty(appConfig, 'downloaderPerformanceMonitoringSpeed', { value: 1000 });
+      
+      const mockDownloader = {
+        getProgress: jest.fn().mockReturnValue({
+          startedAt: new Date(Date.now() - 2000), // 2 seconds ago
+          workersRestartedAt: null,
+          speedTracker: {
+            query: jest.fn().mockReturnValue(500), // Below threshold
+          },
+        }),
+      };
+
+      const result = service.downloadAutoRestartCallback(mockDownloader as any);
+      expect(result).toBe(true);
+    });
+  });
+
+  describe('setItemError', () => {
+    it('should set item error status and update repository', async () => {
+      const itemId = 1;
+      const errorMessage = 'Test error';
+      
+      jest.spyOn(service, 'updateItemStatus').mockResolvedValue(undefined);
+      jest.spyOn(itemsRepo, 'update').mockResolvedValue(undefined);
+
+      await service.setItemError(itemId, errorMessage);
+
+      expect(service.updateItemStatus).toHaveBeenCalledWith(itemId, DownloadStatus.Error);
+      expect(itemsRepo.update).toHaveBeenCalledWith(itemId, { error: errorMessage });
+    });
+  });
+
+  describe('updateGroupStatus', () => {
+    it('should update group status when status changes', async () => {
+      const groupId = 1;
+      const newStatus = DownloadStatus.Completed;
+      const mockGroup = { id: groupId, status: DownloadStatus.Pending, name: 'test', saveAt: '/test', addedAt: new Date(), state: GroupState.Ready };
+      
+      jest.spyOn(groupsRepo, 'find').mockResolvedValue(mockGroup);
+      jest.spyOn(groupsRepo, 'update').mockResolvedValue(undefined);
+      jest.spyOn(pubService, 'groupStatusChanged').mockResolvedValue(undefined);
+
+      await service.updateGroupStatus(groupId, newStatus);
+
+      expect(groupsRepo.update).toHaveBeenCalledWith(groupId, { status: newStatus });
+      expect(pubService.groupStatusChanged).toHaveBeenCalledWith({ id: groupId, status: newStatus });
+    });
+
+    it('should not update when status is the same', async () => {
+      const groupId = 1;
+      const currentStatus = DownloadStatus.Pending;
+      const mockGroup = { id: groupId, status: currentStatus, name: 'test', saveAt: '/test', addedAt: new Date(), state: GroupState.Ready };
+      
+      jest.spyOn(groupsRepo, 'find').mockResolvedValue(mockGroup);
+      jest.spyOn(groupsRepo, 'update').mockResolvedValue(undefined);
+      jest.spyOn(pubService, 'groupStatusChanged').mockResolvedValue(undefined);
+
+      await service.updateGroupStatus(groupId, currentStatus);
+
+      expect(groupsRepo.update).not.toHaveBeenCalled();
+      expect(pubService.groupStatusChanged).not.toHaveBeenCalled();
+    });
+
+    it('should throw error when group not found', async () => {
+      const groupId = 999;
+      
+      jest.spyOn(groupsRepo, 'find').mockResolvedValue(undefined);
+
+      await expect(service.updateGroupStatus(groupId, DownloadStatus.Completed))
+        .rejects.toThrow(`Group ${groupId} not found.`);
+    });
+  });
+
+  describe('updateGroupState', () => {
+    it('should update group state when state changes', async () => {
+      const groupId = 1;
+      const newState = GroupState.Ready;
+      const mockGroup = { id: groupId, state: GroupState.Initializing, status: DownloadStatus.Pending, name: 'test', saveAt: '/test', addedAt: new Date() };
+      
+      jest.spyOn(groupsRepo, 'find').mockResolvedValue(mockGroup);
+      jest.spyOn(groupsRepo, 'update').mockResolvedValue(undefined);
+      jest.spyOn(pubService, 'groupStateChanged').mockResolvedValue(undefined);
+
+      await service.updateGroupState(groupId, newState);
+
+      expect(groupsRepo.update).toHaveBeenCalledWith(groupId, { state: newState });
+      expect(pubService.groupStateChanged).toHaveBeenCalledWith({ id: groupId, state: newState });
     });
   });
 });

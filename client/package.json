@@ -22,14 +22,15 @@
     "@mui/material": "^5.15.14",
     "formik": "^2.4.5",
     "graphql": "^16.8.1",
+    "graphql-scalars": "*",
     "graphql-ws": "^5.15.0",
+    "json-bigint-patch": "*",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-hook-form": "^7.51.1",
     "react-pro-sidebar": "^1.1.0",
     "react-router-dom": "^6.22.3",
-    "json-bigint-patch": "*",
-    "graphql-scalars": "*"
+    "zustand": "^5.0.8"
   },
   "devDependencies": {
     "@graphql-codegen/cli": "^5.0.2",
@@ -44,6 +45,7 @@
     "eslint": "^8.57.0",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.6",
+    "prettier": "^3.2.5",
     "ts-node": "^10.9.2",
     "typescript": "^5.4.3",
     "vite": "^5.2.0"

@@ -22,5 +22,7 @@ module.exports = {
     '@typescript-eslint/explicit-module-boundary-types': 'off',
     '@typescript-eslint/no-explicit-any': 'off',
     "max-len": "off",
+    '@typescript-eslint/no-unused-vars': 'error',
+    'no-unused-vars': 'off', // Turn off base rule as it can report incorrect errors
   },
 };

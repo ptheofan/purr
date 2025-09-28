@@ -9,109 +9,194 @@ interface IFilePlan {
   opType: 'move' | 'copy';
 }
 
+interface ISubtitleFile {
+  file: string;
+  lang: string;
+  lines: number;
+}
+
 export type SubtitlesLanguagesInSeasonEpisodeFoldersOptions = {
   languages: {
     lang: string;
-    aliases: string[]
+    aliases: string[];
   }[];
 };
 
 @Injectable()
 export class SubtitlesService {
+  private readonly VIDEO_EXTENSIONS = ['.mkv', '.mp4'];
+  private readonly SUBTITLE_EXTENSION = '.srt';
 
   /**
-   * RARBG subtitles are usually in a separate folder, this method will move them to the video folder
-   * Will turn this structure into plex compatible structure
+   * Processes RARBG subtitles structure and creates file plans for Plex-compatible organization.
+   * 
+   * Transforms this structure:
    *   showS01E01.mkv
    *   showS01E02.mkv
-   *   Subs|Anything|Any-Depth/
+   *   Subs/Any-Depth/
    *     showS01E01/
    *       2_English.srt
    *       3_English.srt
    *     showS01E02/
    *       3_English.srt
    *       4_English.srt
-   *
+   * 
+   * Into Plex-compatible structure with proper naming conventions.
    */
-  subtitlesLanguagesInSeasonEpisodeFolders(volume: Volume, opts: SubtitlesLanguagesInSeasonEpisodeFoldersOptions): IFilePlan[] {
-    const rVal: IFilePlan[] = [];
+  subtitlesLanguagesInSeasonEpisodeFolders(
+    volume: Volume, 
+    opts: SubtitlesLanguagesInSeasonEpisodeFoldersOptions
+  ): IFilePlan[] {
+    const filePlans: IFilePlan[] = [];
+
     for (const file of volume.readdirSync('/')) {
       const videoFile = `/${file}`;
-      if (!volume.statSync(videoFile).isFile()) continue;
-      if (!(videoFile.endsWith('.mkv') || videoFile.endsWith('.mp4'))) continue;
+      
+      if (!this.isVideoFile(volume, videoFile)) continue;
 
-      // The filename without the extension use path to get the filename without the extension
       const filename = path.basename(videoFile, path.extname(videoFile));
+      const subtitleFolder = findFileOrFolder(volume, filename, 'folder');
+      
+      if (!subtitleFolder) continue;
 
-      const folder = findFileOrFolder(volume, filename, 'folder');
-      if (!folder) continue;
+      const subtitlePlans = this.processSubtitleFolder(volume, subtitleFolder, filename, opts);
+      filePlans.push(...subtitlePlans);
+    }
 
-      // search for subtitle files
-      const subs: Map<string, { file: string, lang: string, lines: number }[]> = new Map();
-      for (const fileNode of volume.readdirSync(folder)) {
-        const file = path.join(folder, fileNode as string);
-        if (file.toString().endsWith('.srt')) {
-          // process subtitle file
-          const subtitle = volume.readFileSync(file, 'utf8') as string;
-          const lines = subtitle.split('\n');
+    return filePlans;
+  }
 
-          // determine language
-          for (const lang of opts.languages) {
-            const matched = lang.aliases.find(alias => file.toLowerCase().includes(alias)) !== undefined;
-            if (!matched) continue;
-            const langSubs = subs.get(lang.lang) || [];
-            langSubs.push({ file: file as string, lang: matched ? lang.lang : 'unknown', lines: lines.length });
-            subs.set(lang.lang, langSubs);
-          }
-        }
-      }
+  private isVideoFile(volume: Volume, filePath: string): boolean {
+    try {
+      const stat = volume.statSync(filePath);
+      if (!stat.isFile()) return false;
+      
+      return this.VIDEO_EXTENSIONS.some(ext => filePath.endsWith(ext));
+    } catch {
+      return false;
+    }
+  }
 
-      // Get all keys from the map as array
-      const languages = Array.from(subs.keys());
-      for (const lang of languages) {
-        const langSubs = subs.get(lang);
-        if (!langSubs) continue;
+  private processSubtitleFolder(
+    volume: Volume,
+    folderPath: string,
+    filename: string,
+    opts: SubtitlesLanguagesInSeasonEpisodeFoldersOptions
+  ): IFilePlan[] {
+    const filePlans: IFilePlan[] = [];
+    const subtitlesByLanguage = this.collectSubtitlesByLanguage(volume, folderPath, opts);
 
-        // sort by number of lines ASC
-        langSubs.sort((a, b) => a.lines - b.lines);
+    for (const [language, subtitles] of subtitlesByLanguage) {
+      const sortedSubtitles = subtitles.sort((a, b) => a.lines - b.lines);
+      const plans = this.createFilePlansForLanguage(filename, language, sortedSubtitles);
+      filePlans.push(...plans);
+    }
 
-        // smallest file is .lang.srt, remove it from the array
-        if (langSubs.length) {
-          const smallest = langSubs.shift();
-          rVal.push({
-            from: smallest.file,
-            to: path.join('/', `${ filename }.${ smallest.lang }.srt`),
-            opType: 'move'
-          });
-          // fs.renameSync(smallest.file, path.join(folderPath, `${ filename }.${ smallest.lang }.srt`));
-        }
+    return filePlans;
+  }
 
-        // largest file is .lang.sdh.srt, remove it from the array
-        if (langSubs.length) {
-          const largest = langSubs.pop();
-          rVal.push({
-            from: largest.file,
-            to: path.join('/', `${ filename }.${ largest.lang }.sdh.srt`),
-            opType: 'move'
-          });
-          // fs.renameSync(largest.file, path.join(folderPath, `${ filename }.${ largest.lang }.sdh.srt`));
-        }
+  private collectSubtitlesByLanguage(
+    volume: Volume,
+    folderPath: string,
+    opts: SubtitlesLanguagesInSeasonEpisodeFoldersOptions
+  ): Map<string, ISubtitleFile[]> {
+    const subtitlesByLanguage = new Map<string, ISubtitleFile[]>();
 
-        // if there's a 3rd file (array not empty), it's .lang.forced.srt, remove it from array
-        if (langSubs.length) {
-          const forced = langSubs.pop();
-          rVal.push({ from: forced.file, to: path.join('/', `${ filename }.${ forced.lang }.forced.srt`), opType: 'move' });
-          // fs.renameSync(forced.file, path.join(folderPath, `${ filename }.${ forced.lang }.forced.srt`));
-        }
+    for (const fileNode of volume.readdirSync(folderPath)) {
+      const filePath = path.join(folderPath, fileNode as string);
+      
+      if (!filePath.endsWith(this.SUBTITLE_EXTENSION)) continue;
 
-        // if more than 3 files the rest are .lang.xxx.srt
-        for (let i = 0; langSubs.length > 0; i++) {
-          rVal.push({ from: langSubs[i].file, to: path.join('/', `${ filename }.${ langSubs[i].lang }.${i}.srt`), opType: 'move' });
-          // fs.renameSync(langSubs[i].file, path.join(folderPath, `${ filename }.${ langSubs[i].lang }.xxx.srt`));
-        }
+      const language = this.detectLanguage(filePath, opts.languages);
+      if (!language) continue;
+
+      const lineCount = this.countSubtitleLines(volume, filePath);
+      const subtitleFile: ISubtitleFile = {
+        file: filePath,
+        lang: language,
+        lines: lineCount
+      };
+
+      const existingSubtitles = subtitlesByLanguage.get(language) || [];
+      existingSubtitles.push(subtitleFile);
+      subtitlesByLanguage.set(language, existingSubtitles);
+    }
+
+    return subtitlesByLanguage;
+  }
+
+  private detectLanguage(filePath: string, languages: { lang: string; aliases: string[] }[]): string | null {
+    const fileName = path.basename(filePath).toLowerCase();
+    
+    for (const language of languages) {
+      const hasMatchingAlias = language.aliases.some(alias => 
+        fileName.includes(alias.toLowerCase())
+      );
+      
+      if (hasMatchingAlias) {
+        return language.lang;
       }
     }
 
-    return rVal;
+    return null;
+  }
+
+  private countSubtitleLines(volume: Volume, filePath: string): number {
+    try {
+      const content = volume.readFileSync(filePath, 'utf8') as string;
+      return content.split('\n').length;
+    } catch {
+      return 0;
+    }
+  }
+
+  private createFilePlansForLanguage(
+    filename: string,
+    language: string,
+    subtitles: ISubtitleFile[]
+  ): IFilePlan[] {
+    const plans: IFilePlan[] = [];
+    const remainingSubtitles = [...subtitles];
+
+    // Smallest file becomes .lang.srt
+    if (remainingSubtitles.length > 0) {
+      const smallest = remainingSubtitles.shift()!;
+      plans.push({
+        from: smallest.file,
+        to: `/${filename}.${language}.srt`,
+        opType: 'move'
+      });
+    }
+
+    // Largest file becomes .lang.sdh.srt
+    if (remainingSubtitles.length > 0) {
+      const largest = remainingSubtitles.pop()!;
+      plans.push({
+        from: largest.file,
+        to: `/${filename}.${language}.sdh.srt`,
+        opType: 'move'
+      });
+    }
+
+    // Third file becomes .lang.forced.srt
+    if (remainingSubtitles.length > 0) {
+      const forced = remainingSubtitles.pop()!;
+      plans.push({
+        from: forced.file,
+        to: `/${filename}.${language}.forced.srt`,
+        opType: 'move'
+      });
+    }
+
+    // Remaining files get numbered suffixes (in order of remaining array)
+    remainingSubtitles.forEach((subtitle, index) => {
+      plans.push({
+        from: subtitle.file,
+        to: `/${filename}.${language}.${index}.srt`,
+        opType: 'move'
+      });
+    });
+
+    return plans;
   }
 }

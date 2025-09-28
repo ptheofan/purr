@@ -1,23 +1,26 @@
-import * as path from 'path'
-import * as fs from 'fs'
-import { fileExistsSync } from 'tsconfig-paths/lib/filesystem'
+import { resolve, dirname, parse } from 'path';
+import { existsSync, readFileSync } from 'fs';
+import { fileExistsSync } from 'tsconfig-paths/lib/filesystem';
 
-// 1st file in the array will be loaded last overriding all other files
-const envFiles = ['.env.local', process.env.NODE_ENV && `.env.${ process.env.NODE_ENV }`, '.env'];
+// Environment files in order of precedence (1st file loaded last, overriding others)
+const envFiles = ['.env.local', process.env.NODE_ENV && `.env.${process.env.NODE_ENV}`, '.env'];
 
+/**
+ * Checks if the given directory is the monorepo root by examining package.json
+ */
 function isMonorepoRoot(directory: string): boolean {
   try {
-    const packageJsonPath = path.resolve(directory, 'package.json');
-    if (!fs.existsSync(packageJsonPath)) {
+    const packageJsonPath = resolve(directory, 'package.json');
+    if (!existsSync(packageJsonPath)) {
       return false;
     }
 
-    const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
+    const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'));
 
     // Check for monorepo identifiers
     return (
-      packageJson.name === '@purr/monorepo' || // Your specific monorepo name
-      (Array.isArray(packageJson.workspaces) && packageJson.workspaces.includes('backend')) // Has workspaces array with backend
+      packageJson.name === '@purr/monorepo' || 
+      (Array.isArray(packageJson.workspaces) && packageJson.workspaces.includes('backend'))
     );
   } catch (error) {
     console.error('Error reading package.json:', error);
@@ -25,16 +28,21 @@ function isMonorepoRoot(directory: string): boolean {
   }
 }
 
+/**
+ * Discovers and returns environment file paths from monorepo root
+ * Searches up the directory tree to find the project root
+ */
 export function getEnvFilePaths(): string[] {
   let currentDir = process.cwd();
-  let projectRoot = null;
+  let projectRoot: string | null = null;
 
-  while (currentDir !== path.parse(currentDir).root) {
+  // Traverse up the directory tree to find monorepo root
+  while (currentDir !== parse(currentDir).root) {
     if (isMonorepoRoot(currentDir)) {
       projectRoot = currentDir;
       break;
     }
-    currentDir = path.dirname(currentDir);
+    currentDir = dirname(currentDir);
   }
 
   if (!projectRoot) {
@@ -42,10 +50,10 @@ export function getEnvFilePaths(): string[] {
     return [];
   }
 
-  const paths = [];
-  for (const envFile of envFiles) {
-    if(!envFile) continue;
-    const filePath = path.resolve(projectRoot, envFile);
+  // Filter out falsy values and check file existence
+  const paths: string[] = [];
+  for (const envFile of envFiles.filter(Boolean)) {
+    const filePath = resolve(projectRoot, envFile as string);
     if (fileExistsSync(filePath)) {
       paths.push(filePath);
     }

@@ -32,3 +32,38 @@ export function prettyTimeOfDay(ms: number): string {
   const date = new Date(ms);
   return date.toLocaleTimeString();
 }
+
+export function prettyUptime(startedAt: string, isMobile: boolean = false): string {
+  const startTime = new Date(startedAt).getTime();
+  const now = Date.now();
+  const uptimeMs = now - startTime;
+  
+  const seconds = Math.floor(uptimeMs / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+  
+  if (isMobile) {
+    // Mobile format: show only days with + for longer uptimes
+    if (days > 0) {
+      return `${days}d+`;
+    } else if (hours > 0) {
+      return `${hours}h+`;
+    } else if (minutes > 0) {
+      return `${minutes}m+`;
+    } else {
+      return `${seconds}s`;
+    }
+  } else {
+    // Desktop format: show detailed breakdown
+    if (days > 0) {
+      return `${days}d ${hours % 24}h ${minutes % 60}m`;
+    } else if (hours > 0) {
+      return `${hours}h ${minutes % 60}m`;
+    } else if (minutes > 0) {
+      return `${minutes}m ${seconds % 60}s`;
+    } else {
+      return `${seconds}s`;
+    }
+  }
+}

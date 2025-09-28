@@ -4,7 +4,7 @@ import { DownloadGroupsRepository, DownloadItemsRepository } from '../repositori
 import { crc32File, getFirstFileOrFolder, getMeta } from '../../../helpers';
 import { Group, Item } from '../entities';
 import { DownloadStatus, GroupState } from '../enums';
-import { DownloadFactory, DownloadProgress } from '../../downloader'
+import { DownloadFactory, DownloadProgress } from '../../downloader';
 import { Mutex } from 'async-mutex';
 import { PutioService } from '../../putio';
 import { RuntimeException } from '@nestjs/core/errors/exceptions';
@@ -14,7 +14,7 @@ import { AppConfigService } from '../../configuration';
 import { SpeedTracker } from '../../../stats';
 import { PublisherService } from './publisher.service';
 import { ItemStatsDto } from '../dtos';
-import { DownloadCoordinator } from '../../downloader'
+import { DownloadCoordinator } from '../../downloader';
 
 export interface IDownloadManagerSettings {
   concurrentLargeFiles?: number;
@@ -27,6 +27,12 @@ export type TAddVolumeResponse = {
   success: boolean;
   analysisCompletedPromise: Promise<void>;
 } & ({ success: true; groups: number; items: number } | { success: false; message: string });
+
+// Constants for better maintainability
+const DEFAULT_SMALL_FILE_THRESHOLD = 1024 * 1024 * 10; // 10MB
+const DEFAULT_HISTOGRAM_DURATION = 1000 * 60 * 60 * 2; // 2 hours
+const DEFAULT_SPEED_QUERY_DURATION = 1000 * 30; // 30 seconds
+const MIN_PROGRESS_UPDATE_INTERVAL = 1000; // 1 second
 
 const startMutex = new Mutex();
 
@@ -41,13 +47,13 @@ export class DownloadManagerService {
   private concurrentLargeFiles: number;
   private concurrentSmallFiles: number;
   private concurrentGroups: number;
-  private smallFileThreshold: number = 1024 * 1024 * 10; // 10MB
-  private histogramDuration = 1000 * 60 * 60 * 2; // 2 hours
-  private speedQueryDuration = 1000 * 30; // 30 seconds
+  private smallFileThreshold: number = DEFAULT_SMALL_FILE_THRESHOLD;
+  private readonly histogramDuration = DEFAULT_HISTOGRAM_DURATION;
+  private readonly speedQueryDuration = DEFAULT_SPEED_QUERY_DURATION;
   private totalBytesDownloaded: ITotalBytesDownloaded;
-  private speedTracker: SpeedTracker;
+  private readonly speedTracker: SpeedTracker;
   private progressUpdateIntervalId: NodeJS.Timeout | undefined;
-  private activeDownloaders = new Map<number, DownloadCoordinator<Item>>();
+  private readonly activeDownloaders = new Map<number, DownloadCoordinator<Item>>();
 
   constructor(
     private readonly groupsRepo: DownloadGroupsRepository,
@@ -85,7 +91,7 @@ export class DownloadManagerService {
     this.progressUpdateIntervalId = setTimeout(async () => {
       await this.publishDownloadManagerStats();
       this.configureUpdateInterval();
-    }, Math.max(this.appConfig.uiProgressUpdateInterval, 1000));
+    }, Math.max(this.appConfig.uiProgressUpdateInterval, MIN_PROGRESS_UPDATE_INTERVAL));
   }
 
   async publishDownloadManagerStats() {
@@ -106,17 +112,17 @@ export class DownloadManagerService {
 
     await this.pubService.downloadManagerStats({
       startedAt: this.totalBytesDownloaded.since,
-      lifetimeBytes: this.totalBytesDownloaded.bytes,
+      lifetimeBytes: this.totalBytesDownloaded.bytes.toString(),
       speed: Math.round(this.speedTracker.query(new Date(now.getTime() - this.speedQueryDuration), now)),
       histogram: histogramDto,
     });
   }
 
-  setSettings(settings: IDownloadManagerSettings) {
-    this.concurrentLargeFiles = settings.concurrentLargeFiles === undefined ? this.concurrentLargeFiles : settings.concurrentLargeFiles;
-    this.concurrentSmallFiles = settings.concurrentSmallFiles === undefined ? this.concurrentSmallFiles : settings.concurrentSmallFiles;
-    this.concurrentGroups = settings.concurrentGroups === undefined ? this.concurrentGroups : settings.concurrentGroups;
-    this.smallFileThreshold = settings.smallFileThreshold === undefined ? this.smallFileThreshold : settings.smallFileThreshold;
+  setSettings(settings: IDownloadManagerSettings): void {
+    this.concurrentLargeFiles = settings.concurrentLargeFiles ?? this.concurrentLargeFiles;
+    this.concurrentSmallFiles = settings.concurrentSmallFiles ?? this.concurrentSmallFiles;
+    this.concurrentGroups = settings.concurrentGroups ?? this.concurrentGroups;
+    this.smallFileThreshold = settings.smallFileThreshold ?? this.smallFileThreshold;
   }
 
   getSettings(): IDownloadManagerSettings {
@@ -130,6 +136,7 @@ export class DownloadManagerService {
 
   /**
    * Add a Volume to the download manager.
+   * Analyzes the volume structure and creates groups/items for download.
    * You need to call start() to start the download queue.
    */
   async addVolume(volume: Volume, saveAt: string): Promise<TAddVolumeResponse> {
@@ -145,8 +152,9 @@ export class DownloadManagerService {
 
     const group = new Group();
     const firstNodeMeta = await getMeta(await getFirstFileOrFolder(volume), volume);
+    
+    // Check if group already exists to prevent duplicates
     if (await this.groupsRepo.find((group) => group.id === firstNodeMeta.id)) {
-      // Group already exists
       return {
         success: false,
         message: 'Group already exists.',
@@ -162,15 +170,17 @@ export class DownloadManagerService {
 
     const items: Item[] = [];
     for (const file of files) {
-      const path = file as string;
-      // is it a directory or file?
-      const isDirectory = volume.statSync(path).isDirectory();
-      if (isDirectory || path.endsWith('/.meta')) {
+      const filePath = file as string;
+      const isDirectory = volume.statSync(filePath).isDirectory();
+      
+      // Skip directories and meta files
+      if (isDirectory || filePath.endsWith('/.meta')) {
         continue;
       }
 
-      const meta = await getMeta(path, volume);
-      const parentPath = path.substring(0, path.lastIndexOf('/'));
+      const meta = await getMeta(filePath, volume);
+      const parentPath = filePath.substring(0, filePath.lastIndexOf('/'));
+      
       items.push({
         id: meta.id,
         name: meta.name,
@@ -183,14 +193,16 @@ export class DownloadManagerService {
       } as Item);
     }
 
-    // Sort the items by size, smaller files first
+    // Sort items by size for optimal download order (smaller files first)
     items.sort((a, b) => a.size - b.size);
 
-    // ensure all items are unique in the repo
-    const uniqueItems = items.filter((item, index, self) => self.findIndex((i) => i.id === item.id) === index);
+    // Remove duplicate items based on ID
+    const uniqueItems = items.filter((item, index, self) => 
+      self.findIndex((i) => i.id === item.id) === index
+    );
     await this.itemsRepo.addMany(uniqueItems);
 
-    // Check if the items are already downloaded and update them accordingly
+    // Asynchronously check if items already exist on disk and verify their integrity
     const analysisCompletedPromise = new Promise<void>((resolve) => {
       this.checkGroupItemsOnDisk(group.id).then(async ({ groupId }) => {
         await this.updateGroupState(groupId, GroupState.Ready);
@@ -198,7 +210,7 @@ export class DownloadManagerService {
       });
     });
 
-    // Group is now initialized and ready.
+    // Mark group as ready for download
     group.state = GroupState.Ready;
 
     return {
@@ -210,10 +222,10 @@ export class DownloadManagerService {
   }
 
   /**
-   * Check if the items of a group already exist on the disk
-   * If they do verify (CRC32) they are correct and mark them as completed
-   * If they do not exist, mark them as pending
-   * If they exist but the CRC32 does not match, mark them as pending and delete the local files
+   * Check if the items of a group already exist on disk and verify their integrity.
+   * - If files exist and CRC32 matches: mark as completed and delete from put.io
+   * - If files exist but CRC32 doesn't match: mark as pending and delete local files
+   * - If files don't exist: mark as pending
    */
   async checkGroupItemsOnDisk(groupId: number): Promise<{ groupId: number }> {
     const group = await this.groupsRepo.find((group) => group.id === groupId);
@@ -221,68 +233,90 @@ export class DownloadManagerService {
     let itemsCompletedCounter = 0;
     for (const item of items) {
       const saveAs = await this.computeDownloadSavePath(item, group);
-      // if saveAs exists in local fs verify CRC32
+      const partialPath = `${saveAs}.partial`;
+
+      // Check for completed file
       if (fs.existsSync(saveAs)) {
         const crc32 = await crc32File(saveAs);
         if (crc32 !== item.crc32) {
-          this.logger.warn(`CRC32 (${crc32} was expected ${ item.crc32 }) Check failed for ${ item.name } (${ item.id }), will retry download.`)
-          // If the file exists but the CRC32 does not match, mark the item as pending
+          this.logger.warn(
+            `Pre-download cleanup: CRC32 mismatch for existing file ${item.name} (${item.id}). Expected: ${item.crc32}, got: ${crc32}. Removing corrupted file.`
+          );
           await this.itemsRepo.update(item.id, { status: DownloadStatus.Pending });
-          // remove the file
           fs.unlinkSync(saveAs);
         } else {
-          this.logger.log(`CRC32 Check passed for ${ item.name } (${ item.id }), will mark as completed.`);
-          // If the file exists and the CRC32 matches, mark the item as completed
+          this.logger.log(`CRC32 check passed for ${item.name} (${item.id}). Marking as completed.`);
           await this.itemsRepo.update(item.id, { status: DownloadStatus.Completed });
           itemsCompletedCounter++;
-          // Delete the file from put.io
           await this.putioService.deleteItem(item.id);
         }
       }
+
+      // Clean up any partial files (resume not supported yet)
+      if (fs.existsSync(partialPath)) {
+        this.logger.debug(`Cleaning up partial file: ${partialPath}`);
+        fs.unlinkSync(partialPath);
+      }
     }
 
-    // if all items are completed, mark the group as completed
-    if (itemsCompletedCounter === items.length) {
-      await this.updateGroupStatus(groupId, DownloadStatus.Completed);
-    } else {
-      await this.updateGroupStatus(groupId, DownloadStatus.Pending);
-    }
+    // Update group status based on completion
+    const groupStatus = itemsCompletedCounter === items.length 
+      ? DownloadStatus.Completed 
+      : DownloadStatus.Pending;
+    await this.updateGroupStatus(groupId, groupStatus);
 
     return { groupId };
   }
 
-  async computeDownloadSavePath(item: Item, group: Group) {
+  async computeDownloadSavePath(item: Item, group: Group): Promise<string> {
     return path.join(group.saveAt, item.relativePath, item.name);
   }
 
   /**
-   * Determine which groups are eligible for download and return them
-   * Utilize the concurrency settings to determine which groups can be downloaded
+   * Determine which groups are eligible for download based on concurrency settings.
+   * Returns groups that can be downloaded concurrently.
    */
   async getDownloadGroupCandidates(): Promise<Group[]> {
+    // If unlimited concurrency, return all active groups
     if (this.concurrentGroups < 1) {
-      return await this.groupsRepo.filter(group => group.status === DownloadStatus.Downloading || group.status === DownloadStatus.Pending);
+      return await this.groupsRepo.filter(group => 
+        group.status === DownloadStatus.Downloading || group.status === DownloadStatus.Pending
+      );
     }
 
-    const downloadingGroups = await this.groupsRepo.filter(group => group.status === DownloadStatus.Downloading);
+    const downloadingGroups = await this.groupsRepo.filter(group => 
+      group.status === DownloadStatus.Downloading
+    );
+    
+    // If already at max concurrency, return only downloading groups
     if (downloadingGroups.length >= this.concurrentGroups) {
       return downloadingGroups;
     }
 
-    const pendingGroups = await this.groupsRepo.filter(group => group.state === GroupState.Ready && group.status === DownloadStatus.Pending);
-    const rVal = downloadingGroups;
-    const pendingGroupsToAdd = Math.min(this.concurrentGroups - downloadingGroups.length, pendingGroups.length);
+    // Add pending groups up to concurrency limit
+    const pendingGroups = await this.groupsRepo.filter(group => 
+      group.state === GroupState.Ready && group.status === DownloadStatus.Pending
+    );
+    
+    const result = [...downloadingGroups];
+    const pendingGroupsToAdd = Math.min(
+      this.concurrentGroups - downloadingGroups.length, 
+      pendingGroups.length
+    );
+    
     for (let i = 0; i < pendingGroupsToAdd; i++) {
-      rVal.push(pendingGroups[i]);
+      result.push(pendingGroups[i]);
     }
-    return rVal;
+    
+    return result;
   }
 
   /**
-   * Determine which items are eligible for download and return them
-   * Utilize the concurrency settings to determine which items can be downloaded
+   * Determine which items are eligible for download based on concurrency settings.
+   * Returns items that can be downloaded concurrently, respecting size-based limits.
    */
   async getDownloadItemCandidates(groups: Group[]): Promise<Item[]> {
+    // Count currently downloading items by size
     const downloadingItemsCounters = (await this.itemsRepo.getAll()).reduce((acc, item) => {
       if (item.status === DownloadStatus.Downloading) {
         if (item.size <= this.smallFileThreshold) {
@@ -294,69 +328,77 @@ export class DownloadManagerService {
       return acc;
     }, { smallFilesCount: 0, largeFilesCount: 0 });
 
-    // Check if the downloading limits are already reached
-    if (downloadingItemsCounters.smallFilesCount >= this.concurrentSmallFiles && downloadingItemsCounters.largeFilesCount >= this.concurrentLargeFiles) {
+    // If already at max concurrency for both types, return empty
+    if (downloadingItemsCounters.smallFilesCount >= this.concurrentSmallFiles && 
+        downloadingItemsCounters.largeFilesCount >= this.concurrentLargeFiles) {
       return [];
     }
 
-    const rVal: Item[] = [];
+    const result: Item[] = [];
+    let currentSmallCount = downloadingItemsCounters.smallFilesCount;
+    let currentLargeCount = downloadingItemsCounters.largeFilesCount;
+
     for (const group of groups) {
-      const items = await this.itemsRepo.filter(item => item.groupId === group.id && item.status === DownloadStatus.Pending);
-      const { smallFiles, largeFiles } = items.reduce((acc, item) => {
-        if (item.size > this.smallFileThreshold && downloadingItemsCounters.largeFilesCount + acc.largeFiles.length < this.concurrentLargeFiles) {
-          acc.largeFiles.push(item);
-        } else if (downloadingItemsCounters.smallFilesCount + acc.smallFiles.length < this.concurrentSmallFiles) {
-          acc.smallFiles.push(item);
+      const items = await this.itemsRepo.filter(item => 
+        item.groupId === group.id && item.status === DownloadStatus.Pending
+      );
+      
+      // Separate items by size
+      const smallFiles = items.filter(item => item.size <= this.smallFileThreshold);
+      const largeFiles = items.filter(item => item.size > this.smallFileThreshold);
+
+      // Add small files up to concurrency limit
+      for (const item of smallFiles) {
+        if (currentSmallCount < this.concurrentSmallFiles) {
+          result.push(item);
+          currentSmallCount++;
+        } else {
+          break;
         }
-        return acc;
-      }, { smallFiles: [], largeFiles: [] });
-
-      // Download the small files according to concurrency settings
-      while (downloadingItemsCounters.smallFilesCount < this.concurrentSmallFiles && smallFiles.length > 0) {
-        const item = smallFiles.shift();
-        downloadingItemsCounters.smallFilesCount++;
-        rVal.push(item);
       }
 
-      // Download the large files according to concurrency settings
-      while (downloadingItemsCounters.largeFilesCount < this.concurrentLargeFiles && largeFiles.length > 0) {
-        const item = largeFiles.shift();
-        downloadingItemsCounters.largeFilesCount++;
-        rVal.push(item);
+      // Add large files up to concurrency limit
+      for (const item of largeFiles) {
+        if (currentLargeCount < this.concurrentLargeFiles) {
+          result.push(item);
+          currentLargeCount++;
+        } else {
+          break;
+        }
       }
 
-      // Check if the downloading limits are already reached
-      if (downloadingItemsCounters.smallFilesCount >= this.concurrentSmallFiles && downloadingItemsCounters.largeFilesCount >= this.concurrentLargeFiles) {
+      // Stop if both limits are reached
+      if (currentSmallCount >= this.concurrentSmallFiles && 
+          currentLargeCount >= this.concurrentLargeFiles) {
         break;
       }
     }
 
-    return rVal;
+    return result;
   }
 
   /**
-   * Start the download queue
+   * Start the download queue.
+   * Uses a mutex to ensure only one start operation runs at a time.
    */
-  async start() {
-    this.logger.debug('Starting download queue.')
+  async start(): Promise<void> {
+    this.logger.debug('Starting download queue.');
     return startMutex.runExclusive(async () => {
-      this.logger.debug('Running start mutex.')
+      this.logger.debug('Running start mutex.');
       try {
         const groups = await this.getDownloadGroupCandidates();
         if (groups.length === 0) {
-          this.logger.debug('Exiting start mutex - no groups to download.')
+          this.logger.debug('Exiting start mutex - no groups to download.');
           return;
         }
 
         const items = await this.getDownloadItemCandidates(groups);
         if (items.length === 0) {
-          this.logger.debug('Exiting start mutex - no items to download.')
+          this.logger.debug('Exiting start mutex - no items to download.');
           return;
         }
 
-        // Get download links for all items to download
-        // We retrieve the with minimum possible number of calls to prevent
-        // possible rate limiting from putio
+        // Get download links for all items in batch to minimize API calls
         let links: string[] = [];
         try {
           links = await this.putioService.getDownloadLinks(items.map(item => item.id));
@@ -365,30 +407,36 @@ export class DownloadManagerService {
           return;
         }
 
-        // assign the download links to the items and start downloading them
-        this.logger.debug('in mutex - Starting download of items.')
+        // Start downloading all items concurrently
+        this.logger.debug('Starting download of items.');
         await Promise.all(items.map(async (item, index) => {
           items[index].downloadLink = links[index];
           const group = groups.find(group => group.id === items[index].groupId);
+          if (!group) {
+            throw new Error(`Group not found for item ${item.id}`);
+          }
           const saveAs = await this.computeDownloadSavePath(items[index], group);
           return this.download(items[index], saveAs);
         }));
       } catch (error) {
-        this.logger.error(error);
+        this.logger.error('Error in start method:', error);
       }
 
-      this.logger.debug('Exiting start mutex.')
+      this.logger.debug('Exiting start mutex.');
     });
   }
 
-  protected async download(item: Item, saveAs: string) {
+  /**
+   * Start downloading a single item.
+   * Creates a downloader and manages its lifecycle.
+   */
+  protected async download(item: Item, saveAs: string): Promise<void> {
     if (this.activeDownloaders.has(item.id)) {
       throw new Error(`Download already in progress for item ${item.id}`);
     }
 
     if (!item.downloadLink) {
-      // Get the download link from putio
-      throw new RuntimeException(`Download link for item ${ item.id } is not available.`);
+      throw new RuntimeException(`Download link for item ${item.id} is not available.`);
     }
 
     await this.updateItemStatus(item.id, DownloadStatus.Downloading);
@@ -406,48 +454,41 @@ export class DownloadManagerService {
         progressCallback: this.progressCallback.bind(this),
         completedCallback: this.completedCallback.bind(this),
         errorCallback: this.errorCallback.bind(this),
-        // maxRetries: this.appConfig.maxRetries,
-        // initialRetryDelay: this.appConfig.initialRetryDelay,
-        // maxRetryDelay: this.appConfig.maxRetryDelay,
-        // networkCheckUrl: this.appConfig.networkCheckUrl,
       });
+
+      this.activeDownloaders.set(item.id, downloader);
 
       downloader.start()
         .then(async () => {
           this.activeDownloaders.delete(item.id);
           await this.updateItemStatus(item.id, DownloadStatus.Completed);
-          // try {
-          //   // await this.putioService.deleteFile(item.id);
-          // } catch (error) {
-          //   this.logger.error(`Downloader completed successfully but failed to delete the file ${ item.id } from putio.`, error);
-          // }
-          this.logger.debug(`Download ${ item.name } completed, calling START again.`)
+          this.logger.debug(`Download ${item.name} completed, calling START again.`);
           await this.start();
         })
         .catch(async (error) => {
           this.activeDownloaders.delete(item.id);
           await this.setItemError(item.id, error.error_message);
-          this.logger.error(`download ${ item.name } failed! ${ error.error_message }`, error.stack);
-          this.logger.debug(`Download ${ item.name } failed, calling START again.`)
+          this.logger.error(`Download ${item.name} failed! ${error.error_message}`, error.stack);
+          this.logger.debug(`Download ${item.name} failed, calling START again.`);
           await this.start();
         });
     } catch (error) {
       this.logger.error(`Failed to create downloader for ${item.name}`, error);
-      await this.setItemError(item.id, error instanceof Error ? error.message : error as string);
-      this.logger.debug(`Download ${ item.name } failed, calling START again.`)
+      await this.setItemError(item.id, error instanceof Error ? error.message : String(error));
+      this.logger.debug(`Download ${item.name} failed, calling START again.`);
       await this.start();
     }
   }
 
-  async setItemError(itemId: number, error: string) {
+  async setItemError(itemId: number, error: string): Promise<void> {
     await this.updateItemStatus(itemId, DownloadStatus.Error);
     await this.itemsRepo.update(itemId, { error });
   }
 
-  async updateGroupStatus(groupId: number, status: DownloadStatus) {
+  async updateGroupStatus(groupId: number, status: DownloadStatus): Promise<void> {
     const group = await this.groupsRepo.find(g => g.id === groupId);
     if (!group) {
-      throw new RuntimeException(`Group ${ groupId } not found.`);
+      throw new RuntimeException(`Group ${groupId} not found.`);
     }
 
     if (group.status !== status) {
@@ -456,10 +497,10 @@ export class DownloadManagerService {
     }
   }
 
-  async updateGroupState(groupId: number, state: GroupState) {
+  async updateGroupState(groupId: number, state: GroupState): Promise<void> {
     const group = await this.groupsRepo.find(g => g.id === groupId);
     if (!group) {
-      throw new RuntimeException(`Group ${ groupId } not found.`);
+      throw new RuntimeException(`Group ${groupId} not found.`);
     }
 
     if (group.state !== state) {
@@ -468,91 +509,90 @@ export class DownloadManagerService {
     }
   }
 
-  async updateItemStatus(id: number, status: DownloadStatus) {
+  async updateItemStatus(id: number, status: DownloadStatus): Promise<void> {
     const item = await this.itemsRepo.find((item) => item.id === id);
     if (!item) {
-      throw new RuntimeException(`Cannot update item ${ id } status. Item not found.`);
+      throw new RuntimeException(`Cannot update item ${id} status. Item not found.`);
     }
 
     if (item.status === status) {
-      // Item is already in the desired status
-      return;
+      return; // Item is already in the desired status
     }
 
     const group = await this.groupsRepo.find((group) => group.id === item.groupId);
     if (!group) {
-      throw new RuntimeException(`Cannot update item ${ id } status. Group not found.`);
+      throw new RuntimeException(`Cannot update item ${id} status. Group not found.`);
     }
+    
     await this.itemsRepo.update(id, { status });
     await this.pubService.itemStatusChanged({ id, status });
 
-    // If the item is completed, check if the group is completed
+    // Update group status based on item completion
     if (status === DownloadStatus.Completed || status === DownloadStatus.Error) {
       const groupItems = await this.itemsRepo.filter((item) => item.groupId === group.id);
-      const completedItems = groupItems.filter((item) => item.status === DownloadStatus.Completed || item.status === DownloadStatus.Error);
+      const completedItems = groupItems.filter((item) => 
+        item.status === DownloadStatus.Completed || item.status === DownloadStatus.Error
+      );
       if (groupItems.length === completedItems.length) {
         await this.updateGroupStatus(group.id, DownloadStatus.Completed);
       }
     } else if (status === DownloadStatus.Pending) {
-      // if group is not downloading or pending, set it to pending
+      // If group is not downloading or pending, set it to pending
       if (group.status !== DownloadStatus.Downloading && group.status !== DownloadStatus.Pending) {
         await this.updateGroupStatus(group.id, DownloadStatus.Pending);
       }
     }
   }
 
-  async groupExists(id: number) {
+  async groupExists(id: number): Promise<boolean> {
     return await this.groupsRepo.find((group) => group.id === id) !== undefined;
   }
 
-  downloadAutoRestartCallback(downloader: DownloadCoordinator<any>): boolean {
+  /**
+   * Determines if download workers should be restarted based on performance monitoring.
+   * Returns true if workers are stuck on slow connection and need restart.
+   */
+  downloadAutoRestartCallback(downloader: DownloadCoordinator<Item>): boolean {
     if (!this.appConfig.downloaderPerformanceMonitoringEnabled) {
       return false;
     }
 
     const stats = downloader.getProgress();
     if (!stats.workersRestartedAt && !stats.startedAt) {
-      return false;
-    }
-
-    if (!stats.workersRestartedAt && !stats.startedAt) {
-      // Workers have not been started yet
-      return false;
+      return false; // Workers have not been started yet
     }
 
     const timeElapsedThreshold = 1000 * this.appConfig.downloaderPerformanceMonitoringTime;
-
-    // Time elapsed since last workers restart in ms
     const since = stats.workersRestartedAt?.getTime() || stats.startedAt.getTime();
     const timeElapsed = Date.now() - since;
 
-    // if time elapsed is over timeElapsedThreshold seconds do a speed check
+    // Check if enough time has elapsed to warrant a speed check
     if (timeElapsed > timeElapsedThreshold) {
-      // if speed is below downloaderPerformanceMonitoringSpeed then restart the workers
-      // this is to prevent the workers from being stuck on a slow connection
-      // and never finishing the download
-      const queryFrom: Date = new Date(Date.now() - 1000 * 10);
+      const queryFrom = new Date(Date.now() - 1000 * 10);
       const speed = stats.speedTracker.query(queryFrom, new Date());
       const speedThreshold = this.appConfig.downloaderPerformanceMonitoringSpeed;
-      if (speed < speedThreshold) {
-        return true;
-      }
+      
+      // Restart workers if speed is below threshold
+      return speed < speedThreshold;
     }
 
     return false;
   }
 
-  progressCallback(downloader: DownloadCoordinator<Item>, stats: DownloadProgress, bytesSinceLastCall: number) {
+  /**
+   * Progress callback for download updates.
+   * Updates statistics and publishes progress to UI.
+   */
+  progressCallback(downloader: DownloadCoordinator<Item>, stats: DownloadProgress, bytesSinceLastCall: number): void {
     // Update download manager statistics
     this.speedTracker.update(Date.now(), bytesSinceLastCall);
-    if (this.totalBytesDownloaded) {
-      this.totalBytesDownloaded.bytes += bytesSinceLastCall;
-    }
+    this.totalBytesDownloaded.bytes += bytesSinceLastCall;
 
     const now = new Date();
     const from = new Date(now.getTime() - this.speedQueryDuration);
     const histogram = stats.speedTracker.histogram(from, now);
-    // noinspection JSIgnoredPromiseFromCall
+    
+    // Publish progress update to UI (fire and forget)
     this.pubService.itemStatsUpdated({
       itemId: downloader.sourceObject.id,
       startedAt: stats.startedAt,
@@ -575,40 +615,48 @@ export class DownloadManagerService {
     } as ItemStatsDto);
   }
 
-  async completedCallback(downloader: DownloadCoordinator<Item>) {
+  /**
+   * Callback when download completes.
+   * Verifies file integrity and updates status accordingly.
+   */
+  async completedCallback(downloader: DownloadCoordinator<Item>): Promise<void> {
     const item = downloader.sourceObject;
-    // CRC32 check
+    
+    // Verify file integrity with CRC32 check
     const fileCRC = await crc32File(downloader.saveAs);
-    if (fileCRC !== item['crc32']) {
-      // CRC32 check failed, re-download the item
-      this.logger.warn(`CRC32 is ${fileCRC} but should have been ${ item.crc32 }. Download failed for ${ item.name } (${ item.id }), will retry download.`)
-      // Delete the file from the disk
+    if (fileCRC !== item.crc32) {
+      this.logger.warn(
+        `CRC32 check failed for ${item.name} (${item.id}). Expected: ${item.crc32}, got: ${fileCRC}. Will retry download.`
+      );
       fs.unlinkSync(downloader.saveAs);
-      // Update the item status to pending
       await this.updateItemStatus(item.id, DownloadStatus.Pending);
       return;
     }
 
-    // Update the item status to completed
+    // Mark item as completed
     await this.updateItemStatus(item.id, DownloadStatus.Completed);
 
-    // If entire group is completed, delete the group from put.io
+    // If entire group is completed, delete from put.io
     const group = await this.groupsRepo.find((group) => group.id === item.groupId);
-    if (group.status === DownloadStatus.Completed) {
-      this.logger.log(`Group ${ group.id } is completed. Deleting from put.io.`);
+    if (group?.status === DownloadStatus.Completed) {
+      this.logger.log(`Group ${group.id} is completed. Deleting from put.io.`);
       await this.putioService.deleteItem(group.id);
     }
 
-    // Update item progress to completion
+    // Send final progress update
     this.progressCallback(downloader, downloader.getProgress(), 0);
   }
 
-  async errorCallback(downloader: DownloadCoordinator<Item>) {
+  /**
+   * Callback when download encounters an error.
+   * Updates item status and sends final progress update.
+   */
+  async errorCallback(downloader: DownloadCoordinator<Item>): Promise<void> {
     const item = downloader.sourceObject;
-    this.logger.error(`Download failed for ${ item.name }`);
+    this.logger.error(`Download failed for ${item.name}`);
     await this.updateItemStatus(item.id, DownloadStatus.Error);
 
-    // Update item progress present
+    // Send final progress update
     this.progressCallback(downloader, downloader.getProgress(), 0);
   }
 }

@@ -1,5 +1,5 @@
 import { NetworkManager } from './network-manager'; // Adjust the import path as needed
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
 import { createWriteStream } from 'fs';
 import { Readable, Writable } from 'stream';
 
@@ -12,14 +12,36 @@ describe('NetworkManager', () => {
 
   beforeEach(() => {
     // Create a new instance before each test
-    networkManager = new NetworkManager('http://example.com/check', { timeout: 10000 });
+    networkManager = new NetworkManager();
 
     // Clear all mock calls and implementations between tests
     jest.clearAllMocks();
   });
 
-  // Tests for checkConnectivity
+  describe('configuration', () => {
+    it('should configure with network check URL and axios config', () => {
+      const networkCheckUrl = 'http://example.com/check';
+      const axiosConfig = { timeout: 10000 };
+      const bytesTolerance = 0.5;
+
+      expect(() => networkManager.configure(networkCheckUrl, axiosConfig, bytesTolerance)).not.toThrow();
+    });
+
+    it('should throw error when configuring disposed manager', () => {
+      networkManager.dispose();
+      expect(() => networkManager.configure('http://example.com')).toThrow('Cannot configure disposed NetworkManager');
+    });
+
+    it('should use default tolerance when not specified', () => {
+      expect(() => networkManager.configure('http://example.com', { timeout: 5000 })).not.toThrow();
+    });
+  });
+
   describe('checkConnectivity', () => {
+    beforeEach(() => {
+      networkManager.configure('http://example.com/check', { timeout: 10000 });
+    });
+
     it('returns true when axios.head succeeds', async () => {
       // Mock axios.head to resolve successfully
       jest.mocked(axios.head).mockResolvedValueOnce({ status: 200 });
@@ -28,7 +50,7 @@ describe('NetworkManager', () => {
 
       expect(result).toBe(true);
       expect(axios.head).toHaveBeenCalledWith('http://example.com/check', {
-        timeout: 10000 // From axiosConfig
+        timeout: 10000
       });
     });
 
@@ -43,10 +65,23 @@ describe('NetworkManager', () => {
         timeout: 10000
       });
     });
+
+    it('should throw error when not configured', async () => {
+      const unconfiguredManager = new NetworkManager();
+      await expect(unconfiguredManager.checkConnectivity()).rejects.toThrow('NetworkManager not configured. Call configure() first.');
+    });
+
+    it('should throw error when disposed', async () => {
+      networkManager.dispose();
+      await expect(networkManager.checkConnectivity()).rejects.toThrow('NetworkManager not configured. Call configure() first.');
+    });
   });
 
-  // Tests for getFileSize
   describe('getFileSize', () => {
+    beforeEach(() => {
+      networkManager.configure('http://example.com/check', { timeout: 10000 });
+    });
+
     it('returns size when content-length is valid', async () => {
       // Mock axios.head to return a valid content-length
       jest.mocked(axios.head).mockResolvedValueOnce({
@@ -81,20 +116,25 @@ describe('NetworkManager', () => {
       expect(axios.head).toHaveBeenCalledWith('http://example.com/file', { timeout: 10000 });
     });
 
-    it('returns undefined when axios.head fails', async () => {
-      // Mock axios.head to reject
-      jest.mocked(axios.head).mockRejectedValueOnce(new Error('Network error'));
+    it('throws NetworkError when axios.head fails', async () => {
+      // Mock axios.head to reject with AxiosError
+      const axiosError = Object.create(AxiosError.prototype);
+      axiosError.message = 'Network error';
+      axiosError.response = { status: 404 };
+      jest.mocked(axios.head).mockRejectedValueOnce(axiosError);
 
-      const size = await networkManager.getFileSize('http://example.com/file');
+      await expect(networkManager.getFileSize('http://example.com/file')).rejects.toThrow('Failed to get file size: Network error');
+    });
 
-      expect(size).toBeUndefined();
-      expect(axios.head).toHaveBeenCalledWith('http://example.com/file', { timeout: 10000 });
+    it('should throw error when disposed', async () => {
+      networkManager.dispose();
+      await expect(networkManager.getFileSize('http://example.com/file')).rejects.toThrow('Cannot get file size on disposed NetworkManager');
     });
   });
 
-  // Tests for calculateRetryDelay
   describe('calculateRetryDelay', () => {
     beforeEach(() => {
+      networkManager.configure('http://example.com/check');
       // Mock Math.random for deterministic testing
       jest.spyOn(global.Math, 'random').mockReturnValue(0.5); // Adds 500ms jitter
     });
@@ -123,7 +163,6 @@ describe('NetworkManager', () => {
     });
   });
 
-  // Tests for downloadRange
   describe('downloadRange', () => {
     let mockedReadable: Readable;
     let mockedWritable: Writable;
@@ -134,6 +173,8 @@ describe('NetworkManager', () => {
     const onProgress = jest.fn();
 
     beforeEach(() => {
+      networkManager.configure('http://example.com/check', { timeout: 10000 }, 0.1);
+
       // Reset mocks and set up streams
       onProgress.mockClear();
 
@@ -202,11 +243,30 @@ describe('NetworkManager', () => {
         mockedReadable.push(null); // End the stream
       });
 
-      await expect(promise).rejects.toThrow('Range size mismatch: expected 100, got 50');
+      await expect(promise).rejects.toThrow(/Range size mismatch: expected 100, got 50/);
 
       // Verify onProgress calls
       expect(onProgress).toHaveBeenCalledTimes(1);
       expect(onProgress).toHaveBeenCalledWith(50);
+    });
+
+    it('accepts bytes within tolerance threshold', async () => {
+      // Use 2% tolerance
+      const tolerantNetworkManager = new NetworkManager();
+      tolerantNetworkManager.configure('http://example.com/check', { timeout: 10000 }, 2);
+
+      const promise = tolerantNetworkManager.downloadRange(range, url, fileHandle, abortSignal, onProgress);
+
+      // Simulate data within 2% tolerance (expected 100, got 98)
+      setImmediate(() => {
+        mockedReadable.push(Buffer.alloc(98));
+        mockedReadable.push(null);
+      });
+
+      await expect(promise).resolves.toBeUndefined();
+
+      expect(onProgress).toHaveBeenCalledTimes(1);
+      expect(onProgress).toHaveBeenCalledWith(98);
     });
 
     it('rejects on readable stream error', async () => {
@@ -238,6 +298,31 @@ describe('NetworkManager', () => {
       });
 
       await expect(promise).rejects.toThrow('Range size mismatch: expected 100, got 50');
+    });
+  });
+
+  describe('dispose', () => {
+    beforeEach(() => {
+      networkManager.configure('http://example.com/check', { timeout: 5000 });
+    });
+
+    it('should dispose and prevent further operations', () => {
+      expect(networkManager.isDisposed).toBe(false);
+
+      networkManager.dispose();
+
+      expect(networkManager.isDisposed).toBe(true);
+    });
+
+    it('should handle multiple dispose calls gracefully', () => {
+      networkManager.dispose();
+      expect(() => networkManager.dispose()).not.toThrow();
+      expect(networkManager.isDisposed).toBe(true);
+    });
+
+    it('should prevent operations after disposal', () => {
+      networkManager.dispose();
+      expect(() => networkManager.configure('http://new.com')).toThrow('Cannot configure disposed NetworkManager');
     });
   });
 });

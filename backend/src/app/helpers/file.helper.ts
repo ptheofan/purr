@@ -20,9 +20,9 @@ export async function crc32File(filePath: string): Promise<string> {
 
     stream.on('data', (chunk) => {
       // Process each byte in the chunk
-      const buffer = Buffer.from(chunk);
-      for (let i = 0; i < buffer.length; i++) {
-        crc = (crc >>> 8) ^ crcTable[(crc ^ buffer[i]) & 0xFF];
+      for (let i = 0; i < chunk.length; i++) {
+        const byte = chunk[i] as number;
+        crc = (crc >>> 8) ^ crcTable[(crc ^ byte) & 0xFF];
       }
     });
 

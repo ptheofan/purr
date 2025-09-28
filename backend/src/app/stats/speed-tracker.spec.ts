@@ -98,5 +98,85 @@ describe('SpeedTracker', () => {
       endEpoch: 5,
       values: [10, 20, 0, 40, 50],
     });
-  })
+  });
+
+  it('handles cumulative updates correctly', () => {
+    speedTracker = new SpeedTracker(0, false);
+    speedTracker.update(1000, 10);
+    speedTracker.update(2000, 30);
+    speedTracker.update(3000, 60);
+
+    expect(speedTracker['data']).toEqual(
+      new Map([
+        [1, 10],
+        [2, 20],
+        [3, 30],
+      ]),
+    );
+  });
+
+  it('handles initial offset correctly', () => {
+    speedTracker = new SpeedTracker(100, true);
+    speedTracker.update(1000, 50);  // 50 bytes downloaded in this update
+    speedTracker.update(2000, 50);  // 50 bytes downloaded in this update
+
+    expect(speedTracker['data']).toEqual(
+      new Map([
+        [1, 50],
+        [2, 50],
+      ]),
+    );
+  });
+
+  it('handles same start and end time in query', () => {
+    speedTracker = new SpeedTracker(0, true);
+    speedTracker.update(1000, 10);
+
+    // Query with same start and end time should return the data for that epoch
+    expect(speedTracker.query(new Date(1000), new Date(1000))).toBe(10);
+  });
+
+  it('forgets older data correctly', () => {
+    speedTracker = new SpeedTracker(0, true);
+    speedTracker.update(1000, 10);
+    speedTracker.update(2000, 20);
+    speedTracker.update(3000, 30);
+    speedTracker.update(4000, 40);
+
+    speedTracker.forgetOlderThan(3);
+
+    expect(speedTracker['data']).toEqual(
+      new Map([
+        [3, 30],
+        [4, 40],
+      ]),
+    );
+  });
+
+  it('resets data correctly on resume', () => {
+    speedTracker = new SpeedTracker(0, true);
+    speedTracker.update(1000, 10);
+    speedTracker.update(2000, 20);
+
+    speedTracker.resume();
+
+    expect(speedTracker['data'].size).toBe(0);
+    expect(speedTracker['sortedEpochs'].length).toBe(0);
+    expect(speedTracker['totalData']).toBe(0);
+  });
+
+  it('handles histogram with granularity', () => {
+    speedTracker = new SpeedTracker(0, true);
+    speedTracker.update(1000, 10);
+    speedTracker.update(2000, 20);
+    speedTracker.update(3000, 30);
+    speedTracker.update(4000, 40);
+
+    const histogram = speedTracker.histogram(new Date(1000), new Date(4000), 2);
+    expect(histogram).toEqual({
+      startEpoch: 1,
+      endEpoch: 4,
+      values: [10, 50, 40], // [epoch1, epoch2+3, epoch4]
+    });
+  });
 });

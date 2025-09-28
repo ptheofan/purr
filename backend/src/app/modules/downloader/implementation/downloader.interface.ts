@@ -73,5 +73,13 @@ export type ErrorCallback = (downloader: DownloadCoordinatorInterface, error: Er
 export type DownloaderAutoRestartCallback = (downloader: DownloadCoordinatorInterface) => boolean;
 
 export interface DownloadCoordinatorInterface {
-
+  start(): Promise<void>;
+  pause(): Promise<Ranges>;
+  cancel(): Promise<void>;
+  getProgress(): DownloadProgress;
+  dispose(): Promise<void>;
+  readonly id: string;
+  readonly sourceObject: unknown;
+  readonly saveAs: string;
+  readonly url: string;
 }

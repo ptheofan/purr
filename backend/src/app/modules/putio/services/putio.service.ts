@@ -1,17 +1,24 @@
 import { Injectable, Logger } from '@nestjs/common';
 import PutioAPIClient, { IFile, IPutioAPIClientResponse, Transfer } from '@putdotio/api-client';
-import axios from 'axios';
 import { memfs } from 'memfs';
 import { Volume } from 'memfs/lib/volume';
 import { RuntimeException } from '@nestjs/core/errors/exceptions';
 import { AppConfigService } from '../../configuration';
-import { waitFor } from '../../../helpers/promises.helper'
+import { waitFor } from '../../../helpers/promises.helper';
+import {
+  extractErrorInfo,
+  isRateLimitError,
+  calculateWaitTimeFromError,
+  formatErrorForLogging,
+} from '../../../helpers/error-extractor.helper'
 
 
 @Injectable()
 export class PutioService {
   private readonly logger = new Logger(PutioService.name);
   private api: PutioAPIClient | null = null;
+  private readonly MAX_RETRY_ATTEMPTS = 10;
+  private readonly DEFAULT_RATE_LIMIT_WAIT = 60; // Default wait time in seconds if no header
 
   constructor(
     private readonly config: AppConfigService,
@@ -46,7 +53,10 @@ export class PutioService {
       const transfers = await this.rateLimitSafeCall(async () => api.Transfers.Get(id));
       return transfers.transfer;
     } catch (err) {
-      this.logger.error(`Error while attempting to get transfer ${ id } (${ err.error_message })`);
+      const errorInfo = extractErrorInfo(err);
+      this.logger.error(
+        `Failed to get transfer ${id}: ${formatErrorForLogging(errorInfo)}`
+      );
       return null;
     }
   }
@@ -57,7 +67,10 @@ export class PutioService {
       const files = await this.rateLimitSafeCall(async () => api.Files.Query(id));
       return files.parent;
     } catch (err) {
-      this.logger.error(`Error while attempting to get file ${ id } (${ err?.data?.error_message || err?.error_message || 'Unexpected Reason' })`);
+      const errorInfo = extractErrorInfo(err);
+      this.logger.error(
+        `Failed to get file ${id}: ${formatErrorForLogging(errorInfo)}`
+      );
       return null;
     }
   }
@@ -98,36 +111,63 @@ export class PutioService {
     return rVal;
   }
 
+  /**
+   * Safely execute Put.io API calls with automatic rate limit handling.
+   *
+   * Put.io Rate Limiting (Official Documentation):
+   * - Rate limits are applied per token and IP address
+   * - Limits vary per endpoint and request frequency
+   * - Response status: 429 when rate limited
+   * - Headers included in 429 responses:
+   *   - X-RateLimit-Remaining: Number of requests remaining in current window
+   *   - X-RateLimit-Limit: Total number of requests allowed in the window
+   *   - X-RateLimit-Reset: Unix timestamp when the rate limit resets
+   *
+   * This method implements exponential backoff retry logic that respects
+   * these official headers for optimal rate limit handling.
+   */
   async rateLimitSafeCall<T>(apiCall: () => Promise<IPutioAPIClientResponse<T>>): Promise<T> {
     let attempts = 0;
-    // Try 100 times to get a successful response
-    while (attempts < 100) {
+    let lastErrorInfo: ReturnType<typeof extractErrorInfo> | null = null;
+
+    while (attempts < this.MAX_RETRY_ATTEMPTS) {
       attempts++;
       try {
         const response = await apiCall();
         return response.data;
       } catch (error) {
-        if (!axios.isAxiosError(error)) {
+        // Extract comprehensive error information
+        const errorInfo = extractErrorInfo(error);
+        lastErrorInfo = errorInfo;
+
+        // If it's not a rate limit error, throw immediately
+        if (!isRateLimitError(errorInfo)) {
+          this.logger.error(
+            `API call failed: ${formatErrorForLogging(errorInfo)}`
+          );
           throw error;
         }
-        if (axios.isAxiosError(error)) {
-          const response = error.response;
-          if (response && response.status !== 429) {
-            throw error;
-          }
 
-          const resetTimestamp = parseInt(response.headers['x-ratelimit-reset']);
-          const limit = parseInt(response.headers['x-ratelimit-limit']);
-          const remaining = parseInt(response.headers['x-ratelimit-remaining']);
-          const currentTime = new Date().getTime() / 1000;
-          const waitTime = resetTimestamp - currentTime;
-          this.logger.log(
-            `Rate limit reached (${ remaining }/${ limit }). Waiting for ${ waitTime } seconds before retrying.`,
-          );
-          await waitFor({ sec: waitTime });
-        }
+        // Handle rate limit error
+        const waitTime = calculateWaitTimeFromError(errorInfo, this.DEFAULT_RATE_LIMIT_WAIT);
+
+        this.logger.log(
+          `Rate limit hit (attempt ${attempts}/${this.MAX_RETRY_ATTEMPTS}). ` +
+          `Waiting ${waitTime.toFixed(1)} seconds before retrying... ` +
+          `[${errorInfo.rateLimitRemaining ?? '?'}/${errorInfo.rateLimitLimit ?? '?'} remaining]`
+        );
+
+        // Add exponential backoff for safety
+        const backoffTime = Math.min(waitTime * Math.pow(1.1, attempts - 1), 300); // Cap at 5 minutes
+        await waitFor({ sec: backoffTime });
       }
     }
+
+    // If we've exhausted all attempts, throw the last error
+    this.logger.error(
+      `Failed after ${this.MAX_RETRY_ATTEMPTS} attempts: ${lastErrorInfo ? formatErrorForLogging(lastErrorInfo) : 'Unknown error'}`
+    );
+    throw lastErrorInfo?.originalError || new RuntimeException('Rate limit retry attempts exhausted');
   }
 
   async deleteItem(id: number): Promise<void> {
@@ -135,7 +175,10 @@ export class PutioService {
       const api = await this.getApi();
       await this.rateLimitSafeCall(async () => await api.Files.Delete([id]));
     } catch (err) {
-      this.logger.error(`Error while attempting to delete file ${ id } (${ err.error_message })`);
+      const errorInfo = extractErrorInfo(err);
+      this.logger.error(
+        `Failed to delete file ${id}: ${formatErrorForLogging(errorInfo)}`
+      );
     }
   }
 
@@ -175,7 +218,11 @@ export class PutioService {
           }
         }
       } catch (err) {
-        this.logger.error(`Error while attempting to get download links for ${ putioIds.join(', ') } (${ err.error_message }) - ${ retries } retries remaining.`);
+        const errorInfo = extractErrorInfo(err);
+        this.logger.error(
+          `Failed to get download links for [${putioIds.join(', ')}]: ${formatErrorForLogging(errorInfo)} ` +
+          `(${maxAttempts - retries} retries remaining)`
+        );
       }
       // sleep for 2 seconds before retrying
       await waitFor({ sec: 2 });
@@ -249,8 +296,11 @@ export class PutioService {
             rVal[file.name][f.name] = JSON.stringify(f);
           }
         }
-      } catch (err) {
-        this.logger.error(`Error while attempting to get files from folder ${ id } (${ err.error_message })`, err.stack);
+      } catch (err: any) {
+        this.logger.error(
+          `Error while attempting to get files from folder ${id}: ${err?.data?.error_message || err?.error_message || err?.message || 'Unknown error'}`,
+          err?.stack
+        );
       }
 
       return rVal;

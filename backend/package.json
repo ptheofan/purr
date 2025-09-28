@@ -28,6 +28,7 @@
     "@nestjs/common": "^10.0.0",
     "@nestjs/config": "^3.2.0",
     "@nestjs/core": "^10.0.0",
+    "@nestjs/event-emitter": "^3.0.1",
     "@nestjs/graphql": "^12.1.1",
     "@nestjs/platform-express": "^10.0.0",
     "@nestjs/platform-socket.io": "^10.3.4",
@@ -36,23 +37,25 @@
     "@nestjs/websockets": "^10.3.4",
     "@putdotio/api-client": "^8.47.0",
     "@putdotio/socket-client": "^4.4.2",
+    "@types/uuid": "^10.0.0",
     "async-mutex": "^0.4.1",
     "axios": "1.7.8",
     "axios-mock-adapter": "^1.22.0",
     "chokidar": "^3.6.0",
     "crc": "^4.3.2",
     "graphql": "^16.8.1",
+    "graphql-scalars": "*",
     "graphql-subscriptions": "^2.0.0",
     "js-yaml": "^4.1.0",
+    "json-bigint-patch": "*",
     "lodash.clonedeep": "^4.5.0",
     "memfs": "^4.7.7",
     "nestjs-zod": "^3.0.0",
     "reflect-metadata": "^0.1.13",
     "rxjs": "^7.8.1",
     "tslib": "^2.3.0",
-    "zod": "^3.22.4",
-    "json-bigint-patch": "*",
-    "graphql-scalars": "*"
+    "uuid": "^9.0.1",
+    "zod": "^3.22.4"
   },
   "devDependencies": {
     "@nestjs/cli": "^10.0.0",
@@ -94,6 +97,7 @@
       "**/*.(t|j)s"
     ],
     "coverageDirectory": "../coverage",
-    "testEnvironment": "node"
+    "testEnvironment": "node",
+    "setupFilesAfterEnv": ["<rootDir>/../jest.setup.ts"]
   }
 }

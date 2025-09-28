@@ -30,6 +30,7 @@ export class DownloadManagerResolver {
     @Args({ name: 'putioId', type: () => Int }) putioId: number,
     @Args({ name: 'saveAt', type: () => String }) saveAt: string,
   ): Promise<CreatePutioDownloadResultDto> {
+    // Check if arbitrary downloads are enabled
     if (!this.appConfig.downloaderArbitraryDownloadsEnabled) {
       return {
         success: false,
@@ -37,6 +38,7 @@ export class DownloadManagerResolver {
       };
     }
 
+    // Validate and restrict the save path to the configured root folder
     let finalSaveAt: string;
     try {
       finalSaveAt = restrictFolderToRoot(saveAt, this.appConfig.downloaderArbitraryDownloadsRootFolder);
@@ -47,6 +49,7 @@ export class DownloadManagerResolver {
       };
     }
 
+    // Get the volume from put.io and add it to the download manager
     const vfs = await this.putioService.getVolume(putioId);
     const { analysisCompletedPromise, ...result} = await this.downloadManagerService.addVolume(vfs, finalSaveAt);
 
@@ -57,6 +60,10 @@ export class DownloadManagerResolver {
       };
     }
 
+    // Get the group after it's been created
+    const group = await this.groupRepo.find(g => g.id === putioId);
+    
+    // If there are items to download, set up state change monitoring
     if (result.items > 0) {
       analysisCompletedPromise.then(async () => {
         const updatedGroup = await this.groupRepo.find(g => g.id === putioId);
@@ -70,8 +77,9 @@ export class DownloadManagerResolver {
       });
     }
 
-    const group = await this.groupRepo.find(g => g.id === putioId);
+    // Publish the group addition event
     await this.pubService.groupAdded(this.groupMapper.entityToDto(group));
+    
     return {
       success: true,
       group,
@@ -80,6 +88,7 @@ export class DownloadManagerResolver {
 
   @Subscription(() => DownloadManagerStatsDto)
   downloadManagerStats() {
+    // Subscribe to download manager statistics updates
     return this.pubSub.asyncIterator(PubKeys.downloadManagerStats);
   }
 }

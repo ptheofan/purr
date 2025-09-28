@@ -89,14 +89,28 @@ Vite is proxying for the backend. It's all accessible on `http://localhost:4000`
 We are using 
 - GraphQL Codegen (https://the-guild.dev/graphql/codegen/docs/guides/react-vue)
 - Apollo Client (https://www.apollographql.com/docs/react/)
+
+### Important: Generated Files
+The `__generated__` directory is gitignored and **must be generated locally**. After pulling changes or setting up the project, you need to run the code generation command.
+
 ### Generate Types
 ```shell
+# Navigate to client directory
+cd client
+
 # One time run
 npm run codegen
 
-# Watch mode
+# Watch mode (recommended for development)
 npm run codegen:watch
 ```
+
+### Development Workflow
+1. **After pulling changes**: Always run `npm run codegen` in the client directory
+2. **During development**: Use `npm run codegen:watch` for automatic regeneration
+3. **Before building**: The build process will automatically run codegen
+
+The generated files provide full TypeScript support for all GraphQL operations, fragments, and subscriptions.
 
 ## Forms
 We are using https://react-hook-form.com/ 
