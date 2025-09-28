@@ -2,14 +2,13 @@
 logs
 *.log
 npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
 pnpm-debug.log*
-lerna-debug.log*
 
 node_modules
+*/**/node_modules
 dist
 dist-ssr
+**/dist
 *.local
 
 backend/src/schema.gql
@@ -39,12 +38,8 @@ backend/src/schema.gql
 .env
 config.yml
 
-# compiled output
-**/dist
-*/**/node_modules
-
 # Tests
 /coverage
 /.nyc_output
 
-/data
+/test-data
