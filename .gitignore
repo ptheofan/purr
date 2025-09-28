@@ -41,8 +41,26 @@ config.yml
 # Tests
 /coverage
 /.nyc_output
+**/coverage/
+**/coverage/**
+coverage/
 
 /test-data
 
 # GraphQL Code Generation
 **/__generated__/
+**/__generated__/**
+
+# TypeScript build artifacts
+*.d.ts
+*.js.map
+*.tsbuildinfo
+**/*.d.ts
+**/*.js.map
+**/*.tsbuildinfo
+
+# Build outputs
+**/dist/
+**/dist/**
+dist/
+dist-ssr/
