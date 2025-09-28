@@ -112,7 +112,7 @@ export class DownloadManagerService {
 
     await this.pubService.downloadManagerStats({
       startedAt: this.totalBytesDownloaded.since,
-      lifetimeBytes: this.totalBytesDownloaded.bytes,
+      lifetimeBytes: this.totalBytesDownloaded.bytes.toString(),
       speed: Math.round(this.speedTracker.query(new Date(now.getTime() - this.speedQueryDuration), now)),
       histogram: histogramDto,
     });
@@ -233,12 +233,14 @@ export class DownloadManagerService {
     let itemsCompletedCounter = 0;
     for (const item of items) {
       const saveAs = await this.computeDownloadSavePath(item, group);
-      
+      const partialPath = `${saveAs}.partial`;
+
+      // Check for completed file
       if (fs.existsSync(saveAs)) {
         const crc32 = await crc32File(saveAs);
         if (crc32 !== item.crc32) {
           this.logger.warn(
-            `CRC32 check failed for ${item.name} (${item.id}). Expected: ${item.crc32}, got: ${crc32}. Will retry download.`
+            `Pre-download cleanup: CRC32 mismatch for existing file ${item.name} (${item.id}). Expected: ${item.crc32}, got: ${crc32}. Removing corrupted file.`
           );
           await this.itemsRepo.update(item.id, { status: DownloadStatus.Pending });
           fs.unlinkSync(saveAs);
@@ -248,6 +250,12 @@ export class DownloadManagerService {
           itemsCompletedCounter++;
           await this.putioService.deleteItem(item.id);
         }
+      }
+
+      // Clean up any partial files (resume not supported yet)
+      if (fs.existsSync(partialPath)) {
+        this.logger.debug(`Cleaning up partial file: ${partialPath}`);
+        fs.unlinkSync(partialPath);
       }
     }
 

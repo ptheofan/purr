@@ -8,6 +8,8 @@ import { Stats } from 'fs';
 jest.mock("node:fs/promises", () => ({
   mkdir: jest.fn().mockResolvedValue(undefined),
   stat: jest.fn(),
+  rename: jest.fn().mockResolvedValue(undefined),
+  unlink: jest.fn().mockResolvedValue(undefined),
 }));
 
 jest.mock('fs/promises', () => ({
@@ -23,6 +25,7 @@ describe('FileManager', () => {
   const mockPath = '/test/path/file.txt';
   const mockedFs = jest.mocked(fs);
   const mockedPath = jest.mocked(path);
+  const mockedFsp = jest.mocked(fsp);
 
   beforeEach(() => {
     jest.resetAllMocks();
@@ -33,7 +36,9 @@ describe('FileManager', () => {
   describe('configuration', () => {
     it('should configure with file path', () => {
       expect(() => manager.configure(mockPath)).not.toThrow();
-      expect(manager.filePath).toBe(mockPath);
+      expect(manager.filePath).toBe(`${mockPath}.partial`);
+      expect(manager.finalFilePath).toBe(mockPath);
+      expect(manager.partialFilePath).toBe(`${mockPath}.partial`);
       expect(manager.isConfigured).toBe(true);
     });
 
@@ -62,15 +67,15 @@ describe('FileManager', () => {
 
       await manager.initializeFile(1024);
 
-      expect(fsp.mkdir).toHaveBeenCalledWith('/test/path', { recursive: true });
-      expect(mockedFs.open).toHaveBeenCalledWith(mockPath, 'w+');
+      expect(mockedFsp.mkdir).toHaveBeenCalledWith('/test/path', { recursive: true });
+      expect(mockedFs.open).toHaveBeenCalledWith(`${mockPath}.partial`, 'w+');
       expect(mockFileHandle.truncate).toHaveBeenCalledWith(1024);
       expect(mockFileHandle.close).toHaveBeenCalled();
     });
 
     it('should handle directory creation failure', async () => {
       const error = new Error('Failed to create directory');
-      (fsp.mkdir as jest.Mock).mockRejectedValue(error);
+      mockedFsp.mkdir.mockRejectedValue(error);
 
       await expect(manager.initializeFile(1024)).rejects.toThrow('Failed to initialize file: Failed to create directory');
       expect(mockedFs.open).not.toHaveBeenCalled();
@@ -112,7 +117,7 @@ describe('FileManager', () => {
 
       const result = await manager.openFileForWriting();
 
-      expect(mockedFs.open).toHaveBeenCalledWith(mockPath, 'r+');
+      expect(mockedFs.open).toHaveBeenCalledWith(`${mockPath}.partial`, 'r+');
       expect(result).toBe(mockFileHandle);
     });
 
@@ -177,12 +182,14 @@ describe('FileManager', () => {
     });
 
     it('should dispose and clear file path', () => {
-      expect(manager.filePath).toBe(mockPath);
+      expect(manager.filePath).toBe(`${mockPath}.partial`);
+      expect(manager.finalFilePath).toBe(mockPath);
       expect(manager.isConfigured).toBe(true);
 
       manager.dispose();
 
       expect(manager.filePath).toBeUndefined();
+      expect(manager.finalFilePath).toBeUndefined();
       expect(manager.isConfigured).toBe(false);
     });
 
@@ -194,6 +201,30 @@ describe('FileManager', () => {
     it('should prevent operations after disposal', () => {
       manager.dispose();
       expect(() => manager.configure('/new/path')).toThrow('Cannot configure disposed FileManager');
+    });
+  });
+
+  describe('finalizeDownload', () => {
+    beforeEach(() => {
+      manager.configure(mockPath);
+    });
+
+    it('should rename partial file to final path', async () => {
+      await manager.finalizeDownload();
+
+      expect(mockedFsp.rename).toHaveBeenCalledWith(`${mockPath}.partial`, mockPath);
+    });
+  });
+
+  describe('cleanupPartialFile', () => {
+    beforeEach(() => {
+      manager.configure(mockPath);
+    });
+
+    it('should remove partial file', async () => {
+      await manager.cleanupPartialFile();
+
+      expect(mockedFsp.unlink).toHaveBeenCalledWith(`${mockPath}.partial`);
     });
   });
 });

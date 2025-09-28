@@ -9,7 +9,14 @@
       "Bash(npm run lint)",
       "Bash(npm run test:*)",
       "Bash(npm test:*)",
-      "Bash(npm run test:cov:*)"
+      "Bash(npm run test:cov:*)",
+      "Bash(npm run backend:*)",
+      "Bash(pkill:*)",
+      "Bash(timeout 5 npm run backend)",
+      "Bash(npm run:*)",
+      "Bash(npm -w backend run lint)",
+      "Bash(timeout 10s npm run backend)",
+      "Bash(timeout 15s npm run start:dev)"
     ],
     "deny": [],
     "ask": []

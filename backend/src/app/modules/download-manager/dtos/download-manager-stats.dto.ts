@@ -1,4 +1,5 @@
 import { Field, Int, ObjectType } from '@nestjs/graphql';
+import { GraphQLBigInt } from 'graphql-scalars';
 import { HistogramDto } from './histogram.dto';
 
 @ObjectType()
@@ -6,10 +7,10 @@ export class DownloadManagerStatsDto {
   @Field(() => Date)
   startedAt: Date;
 
-  @Field(() => Int)
-  lifetimeBytes: number;
+  @Field(() => String)
+  lifetimeBytes: string;
 
-  @Field(() => Int)
+  @Field(() => GraphQLBigInt)
   speed: number;
 
   @Field(() => HistogramDto, { nullable: true })

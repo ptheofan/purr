@@ -1,4 +1,5 @@
 import { Field, Int, ObjectType } from '@nestjs/graphql';
+import { GraphQLBigInt } from 'graphql-scalars';
 import { HistogramDto } from './histogram.dto';
 import { FragmentDto, FragmentStatus } from '../../downloader';
 
@@ -10,7 +11,7 @@ export class FragmentStatsDto {
   @Field(() => Int)
   end: number;
 
-  @Field(() => FragmentStatus)
+  @Field(() => GraphQLBigInt)
   downloadedBytes: number;
 }
 
@@ -19,10 +20,10 @@ export class WorkerStatsDto {
   @Field(() => String)
   id: string;
 
-  @Field(() => Int)
+  @Field(() => GraphQLBigInt)
   speed: number;
 
-  @Field(() => Int)
+  @Field(() => GraphQLBigInt)
   downloadedBytes: number;
 }
 
@@ -37,13 +38,13 @@ export class ItemStatsDto {
   @Field(() => Date, { nullable: true })
   restartedAt?: Date;
 
-  @Field(() => Int)
+  @Field(() => GraphQLBigInt)
   downloadedBytes: number;
 
-  @Field(() => Int)
+  @Field(() => GraphQLBigInt)
   bytesSinceLastEvent: number;
 
-  @Field(() => Int)
+  @Field(() => GraphQLBigInt)
   speed: number;
 
   @Field(() => [FragmentDto])

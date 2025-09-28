@@ -107,6 +107,9 @@ export class DownloadCoordinator<T> extends EventEmitter2 implements DownloadCoo
 
         this.logger.log(`Download completed: ${this.options.url} (${totalBytes} bytes in ${duration}ms)`);
 
+        // Finalize download by renaming from .partial to final name
+        await this.fileManager.finalizeDownload();
+
         this.emitEvent(DownloadEventType.COMPLETED, {
           instanceId: this.instanceId,
           url: this.options.url,
@@ -131,6 +134,9 @@ export class DownloadCoordinator<T> extends EventEmitter2 implements DownloadCoo
         retryable: this.isRetryableError(errorObj),
         timestamp: new Date()
       } as DownloadErrorEvent);
+
+      // Clean up partial file on error
+      await this.fileManager.cleanupPartialFile();
 
       await this.options.errorCallback?.(this, errorObj);
       throw errorObj;

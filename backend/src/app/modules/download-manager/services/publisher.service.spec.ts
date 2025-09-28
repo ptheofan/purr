@@ -166,7 +166,7 @@ describe('PublisherService', () => {
     it('should publish download manager stats event', async () => {
       const payload: DownloadManagerStatsDto = {
         startedAt: new Date(),
-        lifetimeBytes: 1024000,
+        lifetimeBytes: '1024000',
         speed: 500
       };
       pubSub.publish.mockResolvedValue(undefined);
