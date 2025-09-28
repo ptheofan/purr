@@ -1,6 +1,7 @@
-import { Box, Typography, Chip, IconButton } from '@mui/material';
+import { Box, Typography, IconButton } from '@mui/material';
 import { ExpandMore, ExpandLess } from '@mui/icons-material';
 import { GroupBasicInfoFragment } from '../../../__generated__/graphql';
+import StatusChip from './StatusChip';
 
 interface GroupHeaderProps {
   group: GroupBasicInfoFragment;
@@ -15,14 +16,7 @@ const GroupHeader = ({ group, isExpanded, onToggle }: GroupHeaderProps) => {
         <Typography variant="h6" gutterBottom>{group.name}</Typography>
         <Box>
           <Typography variant="body2" component="span">
-            Status: <Chip 
-              label={group.status} 
-              size="small" 
-              color={group.status === 'Completed' ? 'success' : group.status === 'Error' ? 'error' : 'default'}
-            />
-          </Typography>
-          <Typography variant="body2" component="span" sx={{ ml: 2 }}>
-            State: <Chip label={group.state} size="small" variant="outlined" />
+            Status: <StatusChip {...group} />
           </Typography>
           <Typography variant="body2" component="span" sx={{ ml: 2 }}>
             Added: {new Date(group.addedAt).toLocaleString()}

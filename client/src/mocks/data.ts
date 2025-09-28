@@ -1,13 +1,10 @@
 import { 
   Group, 
-  Item, 
   DownloadManagerStatsDto, 
-  HistogramDto,
   DownloadStatus,
+  GroupState,
   FragmentStatus,
   ItemStatsDto,
-  FragmentDto,
-  WorkerDto
 } from '../__generated__/graphql';
 
 // Mock data generators
@@ -17,7 +14,7 @@ export const generateMockGroups = (): Group[] => [
     id: 1,
     name: 'The Matrix Collection',
     status: 'Downloading' as DownloadStatus,
-    state: 'active',
+    state: 'Ready' as GroupState,
     addedAt: new Date('2024-01-15T10:30:00Z').toISOString(),
     saveAt: '/downloads/movies',
     items: [
@@ -64,7 +61,7 @@ export const generateMockGroups = (): Group[] => [
     id: 2,
     name: 'Game of Thrones S01',
     status: 'Completed' as DownloadStatus,
-    state: 'completed',
+    state: 'Ready' as GroupState,
     addedAt: new Date('2024-01-10T14:20:00Z').toISOString(),
     saveAt: '/downloads/series',
     items: [
@@ -99,7 +96,7 @@ export const generateMockGroups = (): Group[] => [
     id: 3,
     name: 'Ubuntu 24.04 LTS',
     status: 'Error' as DownloadStatus,
-    state: 'error',
+    state: 'Ready' as GroupState,
     addedAt: new Date('2024-01-20T09:15:00Z').toISOString(),
     saveAt: '/downloads/software',
     items: [
@@ -122,7 +119,7 @@ export const generateMockGroups = (): Group[] => [
     id: 4,
     name: 'Music Collection - Jazz',
     status: 'Paused' as DownloadStatus,
-    state: 'paused',
+    state: 'Ready' as GroupState,
     addedAt: new Date('2024-01-18T16:45:00Z').toISOString(),
     saveAt: '/downloads/music',
     items: [
@@ -157,7 +154,7 @@ export const generateMockGroups = (): Group[] => [
     id: 5,
     name: 'Software Development Bundle',
     status: 'Downloading' as DownloadStatus,
-    state: 'active',
+    state: 'Ready' as GroupState,
     addedAt: new Date('2024-01-22T11:30:00Z').toISOString(),
     saveAt: '/downloads/software',
     items: [
@@ -357,6 +354,16 @@ export const generateMockGroups = (): Group[] => [
         groupId: 5
       }
     ]
+  },
+  {
+    __typename: 'Group',
+    id: 6,
+    name: 'New Download - Initializing',
+    status: 'Pending' as DownloadStatus,
+    state: 'Initializing' as GroupState,
+    addedAt: new Date('2024-01-25T15:30:00Z').toISOString(),
+    saveAt: '/downloads/new',
+    items: []
   }
 ];
 

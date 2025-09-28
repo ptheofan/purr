@@ -1,5 +1,6 @@
-import { List, ListItem, ListItemText, Typography, Box, Chip } from '@mui/material';
+import { List, ListItem, ListItemText, Typography, Box } from '@mui/material';
 import { prettyBytes } from '../../../helpers/pretty.helper';
+import StatusChip from './StatusChip';
 
 interface DownloadItem {
   id: number;
@@ -33,11 +34,7 @@ const ItemList = ({ items }: ItemListProps) => {
                   Size: {prettyBytes(parseInt(item.size))}
                 </Typography>
                 <Typography variant="body2" component="div">
-                  Status: <Chip 
-                    label={item.status} 
-                    size="small" 
-                    color={item.status === 'Completed' ? 'success' : item.status === 'Error' ? 'error' : 'default'}
-                  />
+                  Status: <StatusChip status={item.status} state='Ready' id={item.id} name={item.name} addedAt={null} saveAt="" />
                 </Typography>
                 {item.error && (
                   <Typography variant="body2" color="error" component="div">
