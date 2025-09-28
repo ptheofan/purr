@@ -16,7 +16,16 @@
       "Bash(npm run:*)",
       "Bash(npm -w backend run lint)",
       "Bash(timeout 10s npm run backend)",
-      "Bash(timeout 15s npm run start:dev)"
+      "Bash(timeout 15s npm run start:dev)",
+      "WebFetch(domain:developers.chrome.com)",
+      "WebFetch(domain:developer.chrome.com)",
+      "mcp__chrome-devtools__new_page",
+      "mcp__chrome-devtools__performance_start_trace",
+      "mcp__chrome-devtools__list_pages",
+      "mcp__chrome-devtools__performance_stop_trace",
+      "mcp__chrome-devtools__list_network_requests",
+      "mcp__chrome-devtools__get_network_request",
+      "mcp__chrome-devtools__navigate_page"
     ],
     "deny": [],
     "ask": []
