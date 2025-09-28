@@ -1,6 +1,6 @@
 import { ProgressTracker } from './progress-tracker';
 import { SpeedTracker } from '../../../stats';
-import { FragmentStatus } from '../dtos';
+import { FragmentStatus } from '../dtos/fragment.dto';
 
 // Mock external dependencies
 jest.mock('../../../stats');
@@ -24,30 +24,42 @@ const mockRanges = {
 };
 
 describe('ProgressTracker', () => {
-  let speedTrackerMock;
-  let initialTime;
+  let speedTrackerMock: {
+    update: jest.Mock;
+    query: jest.Mock;
+    histogram: jest.Mock;
+    resume: jest.Mock;
+    forgetOlderThan: jest.Mock;
+  };
+  let initialTime: number;
 
-  // Set up fake timers and initial time before all tests
   beforeAll(() => {
     jest.useFakeTimers();
     initialTime = new Date('2023-01-01T00:00:00Z').getTime();
     jest.setSystemTime(initialTime);
   });
 
-  // Set up mocks before each test
   beforeEach(() => {
+    // Reset timer to initial time before each test
+    jest.setSystemTime(initialTime);
+    
     speedTrackerMock = {
       update: jest.fn(),
       query: jest.fn(),
       histogram: jest.fn(),
       resume: jest.fn(),
+      forgetOlderThan: jest.fn(),
     };
-    // SpeedTracker.mockImplementation(() => speedTrackerMock);
+    
+    (SpeedTracker as jest.MockedClass<typeof SpeedTracker>).mockImplementation(() => speedTrackerMock as unknown as SpeedTracker);
   });
 
-  // Clear all mocks after each test
   afterEach(() => {
     jest.clearAllMocks();
+  });
+
+  afterAll(() => {
+    jest.useRealTimers();
   });
 
   // Test constructor with default initialBytes
@@ -85,16 +97,15 @@ describe('ProgressTracker', () => {
 
   // Test update method
   test('update calls speedTracker.update and accumulates bytes', () => {
-    const spyUpdate = jest.spyOn(SpeedTracker.prototype, 'update');
-
     const progressTracker = new ProgressTracker();
     const newBytes = 500;
+    
     progressTracker.update(newBytes);
-    expect(spyUpdate).toHaveBeenCalledWith(initialTime, newBytes);
+    expect(speedTrackerMock.update).toHaveBeenCalledWith(initialTime, newBytes);
     expect(progressTracker['bytesSinceLastProgress']).toBe(newBytes);
 
     progressTracker.update(newBytes);
-    expect(spyUpdate).toHaveBeenCalledWith(initialTime, newBytes);
+    expect(speedTrackerMock.update).toHaveBeenCalledWith(initialTime, newBytes);
     expect(progressTracker['bytesSinceLastProgress']).toBe(newBytes * 2);
   });
 
@@ -122,7 +133,7 @@ describe('ProgressTracker', () => {
   });
 
   // Test getProgress method when ranges.isFinite is true
-  test.skip('getProgress returns correct DownloadProgress when ranges.isFinite is true', () => {
+  test('getProgress returns correct DownloadProgress when ranges.isFinite is true', () => {
     const progressTracker = new ProgressTracker();
     const startDate = new Date(initialTime - 100000);
     const restartDate = new Date(initialTime - 50000);
@@ -142,10 +153,11 @@ describe('ProgressTracker', () => {
     ];
 
     speedTrackerMock.query.mockReturnValue(150);
-    speedTrackerMock.histogram.mockReturnValue([{ time: initialTime - 60000, speed: 100 }]);
+    speedTrackerMock.histogram.mockReturnValue({ startEpoch: initialTime - 60000, endEpoch: initialTime, values: [100] });
 
     const progress = progressTracker.getProgress(mockRanges, workerStats);
 
+    // With fake timers, timestamp should be exactly the initial time
     expect(progress.timestamp).toBe(initialTime);
     expect(progress.startedAt).toBe(startDate);
     expect(progress.workersRestartedAt).toBe(restartDate);
@@ -154,17 +166,19 @@ describe('ProgressTracker', () => {
     expect(progress.speed).toBe(150);
     expect(progress.speedTracker).toBe(speedTrackerMock);
     expect(progress.ranges).toBe(mockRanges.ranges);
-    expect(progress.histogram).toEqual([{ time: initialTime - 60000, speed: 100 }]);
+    expect(progress.histogram).toEqual({ startEpoch: initialTime - 60000, endEpoch: initialTime, values: [100] });
     expect(progress.workerStats).toEqual([
-      { id: 1, speed: 100, downloadedBytes: 1000 },
-      { id: 2, speed: 200, downloadedBytes: 2000 },
+      { id: 'w-1', speed: 100, downloadedBytes: 1000 },
+      { id: 'w-2', speed: 200, downloadedBytes: 2000 },
     ]);
 
-    const speedQueryFrom = new Date(initialTime - 10000);
-    const histogramFrom = new Date(initialTime - 60000);
-    const currentDate = new Date(initialTime);
-    expect(speedTrackerMock.query).toHaveBeenCalledWith(speedQueryFrom, currentDate);
-    expect(speedTrackerMock.histogram).toHaveBeenCalledWith(histogramFrom, currentDate, 1);
+    // Verify the exact dates that should be passed to speed tracker methods
+    const expectedSpeedQueryFrom = new Date(initialTime - 10000);
+    const expectedHistogramFrom = new Date(initialTime - 60000);
+    const expectedCurrentDate = new Date(initialTime);
+    
+    expect(speedTrackerMock.query).toHaveBeenCalledWith(expectedSpeedQueryFrom, expectedCurrentDate);
+    expect(speedTrackerMock.histogram).toHaveBeenCalledWith(expectedHistogramFrom, expectedCurrentDate, 1);
   });
 
   // Test getProgress method when ranges.isFinite is false
@@ -179,9 +193,8 @@ describe('ProgressTracker', () => {
 
   // Test resetSpeedTracker method
   test('resetSpeedTracker calls speedTracker.resume', () => {
-    const spyResume = jest.spyOn(SpeedTracker.prototype, 'resume');
     const progressTracker = new ProgressTracker();
     progressTracker.resetSpeedTracker();
-    expect(spyResume).toHaveBeenCalled();
+    expect(speedTrackerMock.resume).toHaveBeenCalled();
   });
 });
