@@ -59,13 +59,48 @@ jobs:
           cache: 'npm'
       - run: npm ci
 
-      # Generate GraphQL schema from backend
-      - name: Generate GraphQL schema
-        run: npm -w backend run generate-schema
+      # Build backend first
+      - name: Build backend
+        run: npm -w backend run build
+
+      # Start backend server in background
+      - name: Start backend server
+        run: npm run backend &
+        env:
+          NODE_ENV: test
+          # Minimal required environment variables for backend startup
+          PUTIO_CLIENT_ID: "1234"
+          PUTIO_CLIENT_SECRET: "dummy_secret"
+          PUTIO_AUTH: "dummy_auth"
+          # Disable features that require real API credentials
+          WATCHER_ENABLED: "false"
+          DOWNLOADER_ENABLED: "false"
+          PUTIO_ENABLE_SOCKET: "false"
+          PUTIO_CHECK_AT_STARTUP: "false"
+
+      # Wait for server to be ready with GraphQL health check
+      - name: Wait for GraphQL endpoint
+        run: |
+          echo "Waiting for backend server to start..."
+          for i in {1..60}; do
+            if curl -s -X POST \
+              -H "Content-Type: application/json" \
+              -d '{"query":"query { appConfig { version } }"}' \
+              http://localhost:3000/graphql | grep -q "version"; then
+              echo "GraphQL endpoint is ready and responding"
+              break
+            fi
+            echo "Waiting for GraphQL endpoint... ($i/60)"
+            sleep 2
+          done
 
       # Generate GraphQL types for client
       - name: Generate GraphQL types
-        run: CI=true npm run codegen
+        run: npm run codegen
+
+      # Stop backend server cleanly
+      - name: Stop backend server
+        run: pkill -f "npm run backend" || true
 
       # Run client tests
       - run: npm -w client run test --if-present
@@ -88,13 +123,44 @@ jobs:
       - name: Build backend
         run: npm -w backend run build
 
-      # Generate GraphQL schema from backend
-      - name: Generate GraphQL schema
-        run: npm -w backend run generate-schema
+      # Start backend server in background
+      - name: Start backend server
+        run: npm run backend &
+        env:
+          NODE_ENV: test
+          # Minimal required environment variables for backend startup
+          PUTIO_CLIENT_ID: "1234"
+          PUTIO_CLIENT_SECRET: "dummy_secret"
+          PUTIO_AUTH: "dummy_auth"
+          # Disable features that require real API credentials
+          WATCHER_ENABLED: "false"
+          DOWNLOADER_ENABLED: "false"
+          PUTIO_ENABLE_SOCKET: "false"
+          PUTIO_CHECK_AT_STARTUP: "false"
+
+      # Wait for server to be ready with GraphQL health check
+      - name: Wait for GraphQL endpoint
+        run: |
+          echo "Waiting for backend server to start..."
+          for i in {1..60}; do
+            if curl -s -X POST \
+              -H "Content-Type: application/json" \
+              -d '{"query":"query { appConfig { version } }"}' \
+              http://localhost:3000/graphql | grep -q "version"; then
+              echo "GraphQL endpoint is ready and responding"
+              break
+            fi
+            echo "Waiting for GraphQL endpoint... ($i/60)"
+            sleep 2
+          done
 
       # Generate GraphQL types for client
       - name: Generate GraphQL types
-        run: CI=true npm run codegen
+        run: npm run codegen
+
+      # Stop backend server cleanly
+      - name: Stop backend server
+        run: pkill -f "npm run backend" || true
 
       # Build client
       - name: Build client

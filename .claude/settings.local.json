@@ -39,7 +39,9 @@
       "Bash(npm -w backend run test -- --testPathPattern=src/app/helpers/file.helper.spec.ts -t \"should fail intentionally\")",
       "Bash(npm -w backend run test -- --testPathPattern=src/app/helpers/test-failure-demo.spec.ts)",
       "Bash(CI=true npm run codegen)",
-      "Bash(npm -w client run build)"
+      "Bash(npm -w client run build)",
+      "Bash(npm -w backend run generate-schema)",
+      "Read(//Users/pt/.Trash/**)"
     ],
     "deny": [],
     "ask": []
