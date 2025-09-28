@@ -43,3 +43,6 @@ config.yml
 /.nyc_output
 
 /test-data
+
+# GraphQL Code Generation
+**/__generated__/

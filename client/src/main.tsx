@@ -8,6 +8,10 @@ import { getMainDefinition } from '@apollo/client/utilities';
 import { RetryLink } from '@apollo/client/link/retry';
 import { GraphQLWsLink } from '@apollo/client/link/subscriptions';
 import { createClient } from 'graphql-ws';
+import { MockProvider } from './providers/MockProvider';
+import { DevToolbar } from './components/DevToolbar';
+import { isMockEnabled } from './config/mock';
+import './utils/mock-utils'; // Initialize mock utilities
 
 const envHttpUri = import.meta.env.VITE_HTTP_URI;
 const wsHttpUri = import.meta.env.VITE_WS_URI;
@@ -44,17 +48,25 @@ const splitLink = new RetryLink({
   httpLink,
 );
 
-const client = new ApolloClient({
+// Create Apollo Client only if mock is not enabled
+const client = !isMockEnabled() ? new ApolloClient({
   link: splitLink,
   cache: new InMemoryCache(),
-});
+}) : null;
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <BrowserRouter>
-      <ApolloProvider client={client}>
-      <App/>
-      </ApolloProvider>
+      <MockProvider>
+        {!isMockEnabled() && client ? (
+          <ApolloProvider client={client}>
+            <App />
+          </ApolloProvider>
+        ) : (
+          <App />
+        )}
+      </MockProvider>
+      <DevToolbar />
     </BrowserRouter>
   </React.StrictMode>,
 );

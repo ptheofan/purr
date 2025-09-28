@@ -1,10 +1,9 @@
-import { gql } from '../../__generated__';
-import { useQuery } from '@apollo/client';
 import { Box, List, ListItem, ListItemText, ListSubheader } from '@mui/material';
 import { prettyBytes, prettyTime } from '../../helpers/pretty.helper';
+import { useAppConfig } from '../../hooks';
 
 const Config = () => {
-  const { loading, error, data } = useQuery(queryAppConfig);
+  const { loading, error, data } = useAppConfig();
   return (
     <Box sx={ {
       padding: '20px',
@@ -112,40 +111,3 @@ const Config = () => {
 };
 
 export default Config;
-
-
-const queryAppConfig = gql(/* GraphQL */ `
-    query AppConfig {
-        appConfig {
-            concurrentGroups
-            concurrentLargeFiles
-            concurrentSmallFiles
-            downloaderChunkSize
-            downloaderEnabled
-            downloaderPerformanceMonitoringEnabled
-            downloaderPerformanceMonitoringSpeed
-            downloaderPerformanceMonitoringTime
-            downloaderTargets {
-                path
-                targetId
-                targetPath
-            }
-            host
-            port
-            putioAuth
-            putioCheckAtStartup
-            putioCheckCronSchedule
-            putioClientId
-            putioClientSecret
-            putioWatcherSocket
-            putioWebhooksEnabled
-            uiProgressUpdateInterval
-            watcherEnabled
-            watcherTargets {
-                path
-                targetId
-                targetPath
-            }
-        }
-    }
-`);
