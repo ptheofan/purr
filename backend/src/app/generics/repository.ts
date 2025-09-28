@@ -32,7 +32,7 @@ export abstract class Repository<T, K extends keyof T> {
    * @param operation The operation to execute with the lock
    * @returns The result of the operation
    */
-  private async withLock<TResult>(operation: () => TResult): Promise<TResult> {
+  protected async withLock<TResult>(operation: () => TResult): Promise<TResult> {
     if (!this.isThreadSafe) {
       return operation();
     }
