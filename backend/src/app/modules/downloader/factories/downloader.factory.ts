@@ -1,4 +1,5 @@
-import { Injectable, BadRequestException, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, BadRequestException, InternalServerErrorException, Logger } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { DownloaderOptions } from '../implementation';
 import { DownloadCoordinator } from '../implementation';
 import { NetworkManager } from '../implementation/network-manager';
@@ -10,6 +11,15 @@ import { FragmentStatus } from '../dtos';
 
 @Injectable()
 export class DownloadFactory {
+    private readonly logger = new Logger(DownloadFactory.name);
+    private readonly activeDownloaders = new Map<string, DownloadCoordinator<any>>();
+
+    constructor(
+        private readonly eventEmitter: EventEmitter2
+    ) {
+        this.logger.log('DownloadFactory initialized');
+    }
+
     /**
      * Creates a new DownloadCoordinator instance with the provided options.
      * Handles file size detection, range initialization, and manager setup.
@@ -17,14 +27,24 @@ export class DownloadFactory {
     async create<T>(options: DownloaderOptions<T>): Promise<DownloadCoordinator<T>> {
         this.validateOptions(options);
 
-        // Initialize core managers
-        const networkManager = new NetworkManager(
-            options.networkCheckUrl ?? 'https://1.1.1.1', 
-            options.axiosConfig
-        );
-        const fileManager = new FileManager(options.saveAs);
+        // Create fresh instances for this download (maintains isolation)
+        const networkManager = new NetworkManager();
+        const fileManager = new FileManager();
         const workerManager = new WorkerManager();
         const progressTracker = new ProgressTracker();
+        const coordinator = new DownloadCoordinator<T>(
+            workerManager,
+            fileManager,
+            networkManager,
+            progressTracker
+        );
+
+        // Configure the instances
+        networkManager.configure(
+            options.networkCheckUrl ?? 'https://1.1.1.1',
+            options.axiosConfig
+        );
+        fileManager.configure(options.saveAs);
 
         // Determine file size and create ranges
         const fileSize = await this.determineFileSize(options, networkManager);
@@ -33,14 +53,30 @@ export class DownloadFactory {
         // Initialize file with determined size
         await fileManager.initializeFile(fileSize);
 
-        return new DownloadCoordinator(
-            options,
-            ranges,
-            workerManager,
-            fileManager,
-            networkManager,
-            progressTracker
-        );
+        // Configure the coordinator and inject the global event emitter
+        coordinator.configure(options, ranges);
+
+        // Set up global event forwarding if needed
+        if (this.eventEmitter) {
+            this.setupEventForwarding(coordinator);
+        }
+
+        // Track active downloaders for monitoring
+        this.activeDownloaders.set(coordinator.id, coordinator);
+
+        // Listen to completion/error events to clean up tracking
+        coordinator.once('download.completed', () => {
+            this.activeDownloaders.delete(coordinator.id);
+            this.logger.debug(`Downloader ${coordinator.id} completed and removed from tracking`);
+        });
+
+        coordinator.once('download.error', () => {
+            this.activeDownloaders.delete(coordinator.id);
+            this.logger.debug(`Downloader ${coordinator.id} errored and removed from tracking`);
+        });
+
+        this.logger.log(`Created downloader ${coordinator.id} for ${options.url}`);
+        return coordinator;
     }
 
     /**
@@ -118,5 +154,61 @@ export class DownloadFactory {
         }
         
         return totalBytes;
+    }
+
+    /**
+     * Get all active downloaders
+     */
+    getActiveDownloaders(): ReadonlyMap<string, DownloadCoordinator<any>> {
+        return this.activeDownloaders;
+    }
+
+    /**
+     * Get downloader by ID
+     */
+    getDownloader(id: string): DownloadCoordinator<any> | undefined {
+        return this.activeDownloaders.get(id);
+    }
+
+    /**
+     * Dispose all active downloaders and clean up
+     */
+    async disposeAll(): Promise<void> {
+        this.logger.log(`Disposing ${this.activeDownloaders.size} active downloaders`);
+
+        const disposePromises = Array.from(this.activeDownloaders.values()).map(async (coordinator) => {
+            try {
+                await coordinator.dispose();
+            } catch (error) {
+                this.logger.error(`Failed to dispose downloader ${coordinator.id}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            }
+        });
+
+        await Promise.allSettled(disposePromises);
+        this.activeDownloaders.clear();
+        this.logger.log('All downloaders disposed');
+    }
+
+    /**
+     * Get factory statistics
+     */
+    getStats() {
+        return {
+            activeDownloaders: this.activeDownloaders.size,
+            downloaderIds: Array.from(this.activeDownloaders.keys())
+        };
+    }
+
+    /**
+     * Set up event forwarding from coordinator to global event emitter
+     */
+    private setupEventForwarding(coordinator: DownloadCoordinator<any>): void {
+        // Forward all coordinator events to global emitter with instance scoping
+        coordinator.onAny((event: string, ...args: any[]) => {
+            // Emit with instance scope
+            this.eventEmitter.emit(`${event}.${coordinator.id}`, ...args);
+            // Also emit without scope for global listeners
+            this.eventEmitter.emit(event, ...args);
+        });
     }
 }

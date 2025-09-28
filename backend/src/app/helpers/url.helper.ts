@@ -19,7 +19,8 @@ export type UrlComponents = {
 export function createUrl(config: UrlComponents): string {
   // Create a copy to avoid mutating the input
   const urlConfig = { ...config };
-  let { protocol, host, port, path, query, hash, username, password, origin } = urlConfig;
+  let { protocol, host, port } = urlConfig;
+  const { path, query, hash, username, password, origin } = urlConfig;
 
   // If origin is provided, return it directly
   if (origin) {

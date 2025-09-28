@@ -7,7 +7,8 @@ import { ApolloServerPluginLandingPageLocalDefault } from '@apollo/server/plugin
 import { ConfigurationModule } from './modules/configuration';
 import { join } from 'path';
 import { ServeStaticModule } from '@nestjs/serve-static';
-import { InfoModule } from './modules/info'
+import { InfoModule } from './modules/info';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 
 @Module({
   imports: [
@@ -16,6 +17,18 @@ import { InfoModule } from './modules/info'
     PutioModule,
     DownloadManagerModule,
     ScheduleModule.forRoot(),
+    EventEmitterModule.forRoot({
+      // Enable global event emitter
+      global: true,
+      // Configure EventEmitter2 options
+      wildcard: true,
+      delimiter: '.',
+      newListener: false,
+      removeListener: false,
+      maxListeners: 20,
+      verboseMemoryLeak: false,
+      ignoreErrors: false,
+    }),
     GraphQLModule.forRoot<ApolloDriverConfig>({
       driver: ApolloDriver,
       sortSchema: true,

@@ -81,8 +81,6 @@ describe('DownloadManagerService', () => {
   let service: DownloadManagerService;
   let groupsRepo: jest.Mocked<DownloadGroupsRepository>;
   let itemsRepo: jest.Mocked<DownloadItemsRepository>;
-  let downloaderFactory: jest.Mocked<DownloadFactory>;
-  let putioService: jest.Mocked<PutioService>;
   let appConfig: jest.Mocked<AppConfigService>;
   let pubService: jest.Mocked<PublisherService>;
 
@@ -154,8 +152,7 @@ describe('DownloadManagerService', () => {
     service = module.get<DownloadManagerService>(DownloadManagerService);
     groupsRepo = module.get<DownloadGroupsRepository>(DownloadGroupsRepository) as jest.Mocked<DownloadGroupsRepository>;
     itemsRepo = module.get<DownloadItemsRepository>(DownloadItemsRepository) as jest.Mocked<DownloadItemsRepository>;
-    downloaderFactory = module.get<DownloadFactory>(DownloadFactory) as jest.Mocked<DownloadFactory>;
-    putioService = module.get<PutioService>(PutioService) as jest.Mocked<PutioService>;
+    // downloaderFactory and putioService not needed since using mocks in providers
     appConfig = module.get<AppConfigService>(AppConfigService) as jest.Mocked<AppConfigService>;
     pubService = module.get<PublisherService>(PublisherService) as jest.Mocked<PublisherService>;
 

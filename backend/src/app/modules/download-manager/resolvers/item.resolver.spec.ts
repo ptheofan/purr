@@ -3,7 +3,7 @@ import { NotFoundException } from '@nestjs/common';
 import { PubSub } from 'graphql-subscriptions';
 import { ItemResolver } from './item.resolver';
 import { DownloadItemsRepository } from '../repositories';
-import { ItemDto, ItemStatsDto, ItemStatusChangedDto } from '../dtos';
+import { ItemDto } from '../dtos';
 import { PubKeys } from '../enums';
 import { PUB_SUB } from '../../subscriptions';
 

@@ -1,7 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { GroupMapper } from './group.mapper';
 import { Group } from '../entities';
-import { GroupDto } from '../dtos';
 import { DownloadStatus, GroupState } from '../enums';
 
 describe('GroupMapper', () => {

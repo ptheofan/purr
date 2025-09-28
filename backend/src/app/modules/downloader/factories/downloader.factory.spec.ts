@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException, InternalServerErrorException } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { DownloadFactory } from './downloader.factory';
 import { DownloaderOptions } from '../implementation';
 import { DownloadCoordinator } from '../implementation';
@@ -20,6 +21,7 @@ jest.mock('../implementation/ranges');
 
 describe('DownloadFactory', () => {
   let factory: DownloadFactory;
+  let mockEventEmitter: jest.Mocked<EventEmitter2>;
   let mockNetworkManager: jest.Mocked<NetworkManager>;
   let mockFileManager: jest.Mocked<FileManager>;
   let mockWorkerManager: jest.Mocked<WorkerManager>;
@@ -27,12 +29,41 @@ describe('DownloadFactory', () => {
   let mockDownloadCoordinator: jest.Mocked<DownloadCoordinator<any>>;
   let mockRanges: jest.Mocked<Ranges>;
 
+  const baseOptions: DownloaderOptions<{ id: string }> = {
+    sourceObject: { id: 'test-id' },
+    url: 'https://example.com/file.zip',
+    saveAs: '/tmp/test-file.zip',
+  };
+
   beforeEach(async () => {
     // Reset all mocks
     jest.clearAllMocks();
 
+    // Create mock EventEmitter2
+    mockEventEmitter = {
+      emit: jest.fn(),
+      on: jest.fn(),
+      once: jest.fn(),
+      off: jest.fn(),
+      removeAllListeners: jest.fn(),
+      setMaxListeners: jest.fn(),
+      getMaxListeners: jest.fn(),
+      listeners: jest.fn(),
+      listenerCount: jest.fn(),
+      prependListener: jest.fn(),
+      prependOnceListener: jest.fn(),
+      eventNames: jest.fn(),
+      addListener: jest.fn(),
+      removeListener: jest.fn(),
+      rawListeners: jest.fn(),
+      onAny: jest.fn(),
+      offAny: jest.fn(),
+      listenersAny: jest.fn(),
+    } as any;
+
     // Create mock instances
     mockNetworkManager = {
+      configure: jest.fn(),
       getFileSize: jest.fn(),
       checkConnectivity: jest.fn(),
       downloadRange: jest.fn(),
@@ -40,6 +71,7 @@ describe('DownloadFactory', () => {
     } as any;
 
     mockFileManager = {
+      configure: jest.fn(),
       initializeFile: jest.fn(),
       openFileForWriting: jest.fn(),
     } as any;
@@ -65,10 +97,15 @@ describe('DownloadFactory', () => {
     } as any;
 
     mockDownloadCoordinator = {
+      id: 'test-coordinator-id',
+      configure: jest.fn(),
       start: jest.fn(),
       pause: jest.fn(),
       cancel: jest.fn(),
       getProgress: jest.fn(),
+      dispose: jest.fn(),
+      once: jest.fn(),
+      onAny: jest.fn(),
     } as any;
 
     mockRanges = {
@@ -92,18 +129,19 @@ describe('DownloadFactory', () => {
     (Ranges as jest.MockedClass<typeof Ranges>).mockImplementation(() => mockRanges);
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [DownloadFactory],
+      providers: [
+        DownloadFactory,
+        {
+          provide: EventEmitter2,
+          useValue: mockEventEmitter,
+        },
+      ],
     }).compile();
 
     factory = module.get<DownloadFactory>(DownloadFactory);
   });
 
   describe('create', () => {
-    const baseOptions: DownloaderOptions<{ id: string }> = {
-      sourceObject: { id: 'test-id' },
-      url: 'https://example.com/file.zip',
-      saveAs: '/tmp/test-file.zip',
-    };
 
     it('should create DownloadCoordinator with provided file size', async () => {
       const options = { ...baseOptions, fileSize: 1024 };
@@ -111,20 +149,21 @@ describe('DownloadFactory', () => {
 
       const result = await factory.create(options);
 
-      expect(NetworkManager).toHaveBeenCalledWith('https://1.1.1.1', undefined);
-      expect(FileManager).toHaveBeenCalledWith('/tmp/test-file.zip');
+      expect(NetworkManager).toHaveBeenCalledWith();
+      expect(mockNetworkManager.configure).toHaveBeenCalledWith('https://1.1.1.1', undefined);
+      expect(FileManager).toHaveBeenCalledWith();
+      expect(mockFileManager.configure).toHaveBeenCalledWith('/tmp/test-file.zip');
       expect(WorkerManager).toHaveBeenCalled();
       expect(ProgressTracker).toHaveBeenCalled();
       expect(Ranges).toHaveBeenCalledWith(1024);
       expect(mockFileManager.initializeFile).toHaveBeenCalledWith(1024);
       expect(DownloadCoordinator).toHaveBeenCalledWith(
-        options,
-        mockRanges,
         mockWorkerManager,
         mockFileManager,
         mockNetworkManager,
         mockProgressTracker
       );
+      expect(mockDownloadCoordinator.configure).toHaveBeenCalledWith(options, mockRanges);
       expect(result).toBe(mockDownloadCoordinator);
     });
 
@@ -140,14 +179,7 @@ describe('DownloadFactory', () => {
       expect(mockRanges.changeAll).toHaveBeenCalledWith(FragmentStatus.reserved, FragmentStatus.pending);
       // The total size is calculated as the sum of all status counts, so 2048 * 3 = 6144
       expect(mockFileManager.initializeFile).toHaveBeenCalledWith(6144);
-      expect(DownloadCoordinator).toHaveBeenCalledWith(
-        options,
-        initialRanges,
-        mockWorkerManager,
-        mockFileManager,
-        mockNetworkManager,
-        mockProgressTracker
-      );
+      expect(mockDownloadCoordinator.configure).toHaveBeenCalledWith(options, initialRanges);
       expect(result).toBe(mockDownloadCoordinator);
     });
 
@@ -171,7 +203,7 @@ describe('DownloadFactory', () => {
 
       await factory.create(options);
 
-      expect(NetworkManager).toHaveBeenCalledWith('https://google.com', undefined);
+      expect(mockNetworkManager.configure).toHaveBeenCalledWith('https://google.com', undefined);
     });
 
     it('should pass axios config to NetworkManager', async () => {
@@ -182,7 +214,37 @@ describe('DownloadFactory', () => {
 
       await factory.create(options);
 
-      expect(NetworkManager).toHaveBeenCalledWith('https://1.1.1.1', axiosConfig);
+      expect(mockNetworkManager.configure).toHaveBeenCalledWith('https://1.1.1.1', axiosConfig);
+    });
+
+    it('should setup event forwarding when EventEmitter2 is provided', async () => {
+      const options = { ...baseOptions, fileSize: 1024 };
+      mockFileManager.initializeFile.mockResolvedValue(undefined);
+
+      const coordinator = await factory.create(options);
+
+      expect(mockDownloadCoordinator.onAny).toHaveBeenCalled();
+
+      // Verify the callback function was set up correctly
+      const onAnyCallback = mockDownloadCoordinator.onAny.mock.calls[0][0];
+      expect(typeof onAnyCallback).toBe('function');
+
+      // Test the event forwarding behavior
+      const testEventName = 'download.progress';
+      const testEventData = { progress: 50, bytesDownloaded: 512 };
+
+      // Simulate the coordinator emitting an event
+      onAnyCallback(testEventName, testEventData);
+
+      // Verify both scoped and unscoped events were emitted
+      expect(mockEventEmitter.emit).toHaveBeenCalledWith(
+        `${testEventName}.${coordinator.id}`,
+        testEventData
+      );
+      expect(mockEventEmitter.emit).toHaveBeenCalledWith(
+        testEventName,
+        testEventData
+      );
     });
   });
 
@@ -307,6 +369,230 @@ describe('DownloadFactory', () => {
       mockFileManager.initializeFile.mockRejectedValue(new Error('File system error'));
 
       await expect(factory.create(options)).rejects.toThrow('File system error');
+    });
+  });
+
+  describe('event forwarding', () => {
+    it('should forward multiple events with correct scoping', async () => {
+      const options = { ...baseOptions, fileSize: 1024 };
+      mockFileManager.initializeFile.mockResolvedValue(undefined);
+
+      const coordinator = await factory.create(options);
+      const onAnyCallback = mockDownloadCoordinator.onAny.mock.calls[0][0];
+
+      // Test multiple event types
+      const events = [
+        { name: 'download.started', data: { timestamp: Date.now() } },
+        { name: 'download.progress', data: { progress: 25, speed: 1024 } },
+        { name: 'download.completed', data: { totalBytes: 1024 } },
+      ];
+
+      events.forEach(event => {
+        onAnyCallback(event.name, event.data);
+      });
+
+      // Verify all events were forwarded correctly
+      events.forEach(event => {
+        expect(mockEventEmitter.emit).toHaveBeenCalledWith(
+          `${event.name}.${coordinator.id}`,
+          event.data
+        );
+        expect(mockEventEmitter.emit).toHaveBeenCalledWith(
+          event.name,
+          event.data
+        );
+      });
+
+      // Verify total emit calls (2 per event: scoped + unscoped)
+      expect(mockEventEmitter.emit).toHaveBeenCalledTimes(events.length * 2);
+    });
+
+    it('should handle events with multiple arguments', async () => {
+      const options = { ...baseOptions, fileSize: 1024 };
+      mockFileManager.initializeFile.mockResolvedValue(undefined);
+
+      const coordinator = await factory.create(options);
+      const onAnyCallback = mockDownloadCoordinator.onAny.mock.calls[0][0];
+
+      const eventName = 'download.error';
+      const errorMsg = 'Network timeout';
+      const errorCode = 'TIMEOUT';
+      const retry = true;
+
+      onAnyCallback(eventName, errorMsg, errorCode, retry);
+
+      expect(mockEventEmitter.emit).toHaveBeenCalledWith(
+        `${eventName}.${coordinator.id}`,
+        errorMsg,
+        errorCode,
+        retry
+      );
+      expect(mockEventEmitter.emit).toHaveBeenCalledWith(
+        eventName,
+        errorMsg,
+        errorCode,
+        retry
+      );
+    });
+
+    it('should not setup event forwarding when EventEmitter2 is null', async () => {
+      // Create a new factory instance without EventEmitter2
+      const module: TestingModule = await Test.createTestingModule({
+        providers: [
+          DownloadFactory,
+          {
+            provide: EventEmitter2,
+            useValue: null,
+          },
+        ],
+      }).compile();
+
+      const factoryWithoutEmitter = module.get<DownloadFactory>(DownloadFactory);
+
+      const options = { ...baseOptions, fileSize: 1024 };
+      mockFileManager.initializeFile.mockResolvedValue(undefined);
+
+      await factoryWithoutEmitter.create(options);
+
+      // onAny should not be called when EventEmitter2 is not available
+      expect(mockDownloadCoordinator.onAny).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('factory management', () => {
+    it('should track active downloaders', async () => {
+      const options = {
+        sourceObject: { id: 'test' },
+        url: 'https://example.com/file.zip',
+        saveAs: '/tmp/test.zip',
+        fileSize: 1024,
+      };
+      mockFileManager.initializeFile.mockResolvedValue(undefined);
+
+      await factory.create(options);
+
+      const stats = factory.getStats();
+      expect(stats.activeDownloaders).toBe(1);
+      expect(stats.downloaderIds).toContain('test-coordinator-id');
+    });
+
+    it('should dispose all active downloaders', async () => {
+      const options = {
+        sourceObject: { id: 'test' },
+        url: 'https://example.com/file.zip',
+        saveAs: '/tmp/test.zip',
+        fileSize: 1024,
+      };
+      mockFileManager.initializeFile.mockResolvedValue(undefined);
+
+      await factory.create(options);
+      await factory.disposeAll();
+
+      expect(mockDownloadCoordinator.dispose).toHaveBeenCalled();
+    });
+
+    it('should remove downloader from tracking on completion', async () => {
+      const options = {
+        sourceObject: { id: 'test' },
+        url: 'https://example.com/file.zip',
+        saveAs: '/tmp/test.zip',
+        fileSize: 1024,
+      };
+      mockFileManager.initializeFile.mockResolvedValue(undefined);
+
+      await factory.create(options);
+
+      // Verify downloader is tracked
+      let stats = factory.getStats();
+      expect(stats.activeDownloaders).toBe(1);
+      expect(stats.downloaderIds).toContain('test-coordinator-id');
+
+      // Simulate completion event
+      const onceCallsForCompletion = mockDownloadCoordinator.once.mock.calls.find(
+        call => call[0] === 'download.completed'
+      );
+      expect(onceCallsForCompletion).toBeDefined();
+      const completionCallback = onceCallsForCompletion![1];
+
+      // Trigger completion
+      completionCallback();
+
+      // Verify downloader is removed from tracking
+      stats = factory.getStats();
+      expect(stats.activeDownloaders).toBe(0);
+      expect(stats.downloaderIds).not.toContain('test-coordinator-id');
+    });
+
+    it('should remove downloader from tracking on error', async () => {
+      const options = {
+        sourceObject: { id: 'test' },
+        url: 'https://example.com/file.zip',
+        saveAs: '/tmp/test.zip',
+        fileSize: 1024,
+      };
+      mockFileManager.initializeFile.mockResolvedValue(undefined);
+
+      await factory.create(options);
+
+      // Verify downloader is tracked
+      let stats = factory.getStats();
+      expect(stats.activeDownloaders).toBe(1);
+
+      // Simulate error event
+      const onceCallsForError = mockDownloadCoordinator.once.mock.calls.find(
+        call => call[0] === 'download.error'
+      );
+      expect(onceCallsForError).toBeDefined();
+      const errorCallback = onceCallsForError![1];
+
+      // Trigger error
+      errorCallback();
+
+      // Verify downloader is removed from tracking
+      stats = factory.getStats();
+      expect(stats.activeDownloaders).toBe(0);
+    });
+  });
+
+  describe('EventEmitter2 dependency injection', () => {
+    it('should properly inject EventEmitter2 and use it for event forwarding', async () => {
+      // This test verifies the DI setup is working correctly
+      expect(factory).toBeDefined();
+      expect(mockEventEmitter).toBeDefined();
+
+      const options = { ...baseOptions, fileSize: 1024 };
+      mockFileManager.initializeFile.mockResolvedValue(undefined);
+
+      const coordinator = await factory.create(options);
+
+      // Verify EventEmitter2 was injected and used
+      expect(mockDownloadCoordinator.onAny).toHaveBeenCalled();
+
+      // Test that the injected EventEmitter2 instance is used
+      const onAnyCallback = mockDownloadCoordinator.onAny.mock.calls[0][0];
+      onAnyCallback('test.event', { data: 'test' });
+
+      expect(mockEventEmitter.emit).toHaveBeenCalledWith(
+        `test.event.${coordinator.id}`,
+        { data: 'test' }
+      );
+      expect(mockEventEmitter.emit).toHaveBeenCalledWith(
+        'test.event',
+        { data: 'test' }
+      );
+    });
+
+    it('should have all required EventEmitter2 methods in mock', () => {
+      // Verify our mock has all the methods the factory might use
+      expect(mockEventEmitter.emit).toBeDefined();
+      expect(mockEventEmitter.on).toBeDefined();
+      expect(mockEventEmitter.once).toBeDefined();
+      expect(mockEventEmitter.off).toBeDefined();
+      expect(mockEventEmitter.removeAllListeners).toBeDefined();
+
+      // These are all jest.fn() so they should be callable
+      expect(typeof mockEventEmitter.emit).toBe('function');
+      expect(typeof mockEventEmitter.on).toBe('function');
     });
   });
 });

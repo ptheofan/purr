@@ -1,33 +1,90 @@
-import axios, { AxiosRequestConfig } from 'axios';
+import axios, { AxiosRequestConfig, AxiosError } from 'axios';
 import { createWriteStream } from 'fs';
 import { FileHandle } from 'fs/promises';
 import { Fragment } from './ranges';
+import { Logger } from '@nestjs/common';
+import { NetworkError } from '../errors/download.errors';
 
 export class NetworkManager {
-  constructor(
-    private readonly networkCheckUrl: string,
-    private readonly axiosConfig?: Partial<AxiosRequestConfig>
-  ) {}
+  private readonly logger = new Logger(NetworkManager.name);
+  private networkCheckUrl?: string;
+  private axiosConfig?: Partial<AxiosRequestConfig>;
+  private bytesTolerancePercent: number = 0.1; // Default 0.1% tolerance instead of 0.5%
+  private disposed = false;
+
+  constructor() {
+    this.logger.debug('NetworkManager instance created');
+  }
+
+  /**
+   * Configure the network manager with specific settings
+   */
+  configure(
+    networkCheckUrl: string,
+    axiosConfig?: Partial<AxiosRequestConfig>,
+    bytesTolerancePercent: number = 0.1
+  ): void {
+    if (this.disposed) {
+      throw new Error('Cannot configure disposed NetworkManager');
+    }
+
+    this.networkCheckUrl = networkCheckUrl;
+    this.axiosConfig = axiosConfig;
+    this.bytesTolerancePercent = bytesTolerancePercent;
+
+    this.logger.debug(`NetworkManager configured with check URL: ${networkCheckUrl}`);
+  }
 
   async checkConnectivity(): Promise<boolean> {
+    if (!this.networkCheckUrl) {
+      throw new Error('NetworkManager not configured. Call configure() first.');
+    }
+    if (this.disposed) {
+      throw new Error('Cannot check connectivity on disposed NetworkManager');
+    }
+
     try {
       await axios.head(this.networkCheckUrl, {
         ...this.axiosConfig,
         timeout: this.axiosConfig?.timeout || 5000
       });
+      this.logger.debug('Network connectivity check: OK');
       return true;
-    } catch {
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      this.logger.warn(`Network connectivity check failed: ${errorMessage}`);
       return false;
     }
   }
 
   async getFileSize(url: string): Promise<number | undefined> {
+    if (this.disposed) {
+      throw new Error('Cannot get file size on disposed NetworkManager');
+    }
+
     try {
       const response = await axios.head(url, this.axiosConfig);
       const size = parseInt(response.headers['content-length'], 10);
-      return isNaN(size) ? undefined : size;
-    } catch {
-      return undefined;
+
+      if (isNaN(size)) {
+        this.logger.warn(`No content-length header in response from ${url}`);
+        return undefined;
+      }
+
+      this.logger.debug(`File size for ${url}: ${size} bytes`);
+      return size;
+    } catch (error) {
+      if (error instanceof AxiosError) {
+        this.logger.error(`Failed to get file size from ${url}: ${error.message}`);
+        throw new NetworkError(
+          `Failed to get file size: ${error.message}`,
+          error.response?.status,
+          url,
+          undefined,
+          error
+        );
+      }
+      throw error;
     }
   }
 
@@ -36,7 +93,32 @@ export class NetworkManager {
       initialDelay * Math.pow(2, retryCount),
       maxDelay
     );
-    return delay + Math.random() * 1000;
+    const jitter = Math.random() * 1000;
+    const totalDelay = delay + jitter;
+
+    this.logger.debug(`Retry ${retryCount}: delay ${totalDelay}ms (base: ${delay}ms, jitter: ${jitter.toFixed(0)}ms)`);
+    return totalDelay;
+  }
+
+  /**
+   * Dispose of this manager and clean up resources
+   */
+  dispose(): void {
+    if (this.disposed) return;
+
+    this.logger.debug('Disposing NetworkManager');
+    this.disposed = true;
+
+    // Clear sensitive data
+    this.networkCheckUrl = undefined;
+    this.axiosConfig = undefined;
+  }
+
+  /**
+   * Check if manager is disposed
+   */
+  get isDisposed(): boolean {
+    return this.disposed;
   }
 
   async downloadRange(
@@ -77,19 +159,15 @@ export class NetworkManager {
       response.data.pipe(writeStream);
 
       writeStream.on('finish', () => {
-        // The size check has been modified to be more tolerant
-        // Some servers might send slightly different amounts of data
-        // than requested, but as long as we're within a reasonable margin
-        // (e.g., within 0.5% of expected size), we consider it successful
+        // Some servers might send slightly different amounts of data than requested
+        // Use configurable tolerance to handle minor discrepancies
+        const toleranceRatio = this.bytesTolerancePercent / 100;
+        const margin = Math.max(1, Math.ceil(expectedBytes * toleranceRatio));
 
-        // Calculate allowable margin (0.5% of expected bytes or at least 1 byte)
-        const margin = Math.max(1, Math.ceil(expectedBytes * 0.005));
-
-        // Check if the bytes written are within the acceptable range
         if (Math.abs(bytesWritten - expectedBytes) <= margin) {
           resolve();
         } else {
-          reject(new Error(`Range size mismatch: expected ${expectedBytes}, got ${bytesWritten} (difference: ${bytesWritten - expectedBytes})`));
+          reject(new Error(`Range size mismatch: expected ${expectedBytes}, got ${bytesWritten} (difference: ${bytesWritten - expectedBytes}, tolerance: ${margin} bytes)`));
         }
       });
 

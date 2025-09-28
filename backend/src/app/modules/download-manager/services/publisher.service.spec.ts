@@ -11,7 +11,7 @@ import {
   ItemStatsDto,
   ItemStatusChangedDto
 } from '../dtos';
-import { FragmentDto, FragmentStatus } from '../../downloader';
+import { FragmentStatus } from '../../downloader';
 
 describe('PublisherService', () => {
   let service: PublisherService;

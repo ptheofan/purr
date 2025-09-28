@@ -38,11 +38,14 @@ describe('AppConfigService', () => {
     });
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [AppConfigService],
-    })
-      .overrideProvider(ConfigService)
-      .useValue(mockConfigService)
-      .compile();
+      providers: [
+        AppConfigService,
+        {
+          provide: ConfigService,
+          useValue: mockConfigService,
+        },
+      ],
+    }).compile();
 
     service = module.get<AppConfigService>(AppConfigService);
     configService = module.get<ConfigService>(ConfigService);
@@ -189,6 +192,26 @@ describe('AppConfigService', () => {
       expect(service.putioClientSecret).toBe('test-secret');
       expect(service.putioAuth).toBe('test-auth');
     });
+
+    it('should throw error for invalid configuration in test environment', () => {
+      const invalidMockConfigService = {
+        get: jest.fn().mockImplementation((key: string) => {
+          switch (key) {
+            case 'NODE_ENV':
+              return 'test';
+            // Missing required PUTIO_CLIENT_ID
+            case EnvKeys.PUTIO_CLIENT_SECRET:
+              return 'test-secret';
+            case EnvKeys.PUTIO_AUTH:
+              return 'test-auth';
+            default:
+              return undefined;
+          }
+        }),
+      } as any;
+
+      expect(() => new AppConfigService(invalidMockConfigService)).toThrow('Configuration validation failed');
+    });
   });
 
   describe('Environment variable loading', () => {
@@ -270,6 +293,62 @@ describe('AppConfigService', () => {
       const newService = new AppConfigService(testMockConfigService);
       expect(newService.host).toBe('https://example.com');
       expect(newService.putioClientSecret).toBe('new-secret');
+    });
+
+    it('should parse array values correctly', () => {
+      const testMockConfigService = {
+        get: jest.fn().mockImplementation((key: string) => {
+          switch (key) {
+            case 'NODE_ENV':
+              return 'test';
+            case EnvKeys.CONSOLE_LOG_LEVELS:
+              return 'log,error,debug';
+            case EnvKeys.PUTIO_CLIENT_ID:
+              return '1234';
+            case EnvKeys.PUTIO_CLIENT_SECRET:
+              return 'test-secret';
+            case EnvKeys.PUTIO_AUTH:
+              return 'test-auth';
+            default:
+              return undefined;
+          }
+        }),
+      } as any;
+
+      const newService = new AppConfigService(testMockConfigService);
+      expect(newService.consoleLogLevels).toEqual(['log', 'error', 'debug']);
+    });
+
+    it('should parse target values correctly', () => {
+      const testMockConfigService = {
+        get: jest.fn().mockImplementation((key: string) => {
+          switch (key) {
+            case 'NODE_ENV':
+              return 'test';
+            case EnvKeys.WATCHER_TARGETS:
+              return '/path1:123;/path2:456';
+            case EnvKeys.DOWNLOADER_TARGETS:
+              return '/download1:789';
+            case EnvKeys.PUTIO_CLIENT_ID:
+              return '1234';
+            case EnvKeys.PUTIO_CLIENT_SECRET:
+              return 'test-secret';
+            case EnvKeys.PUTIO_AUTH:
+              return 'test-auth';
+            default:
+              return undefined;
+          }
+        }),
+      } as any;
+
+      const newService = new AppConfigService(testMockConfigService);
+      expect(newService.watcherTargets).toEqual([
+        { path: '/path1', targetId: 123 },
+        { path: '/path2', targetId: 456 },
+      ]);
+      expect(newService.downloaderTargets).toEqual([
+        { path: '/download1', targetId: 789 },
+      ]);
     });
   });
 });
