@@ -1,6 +1,5 @@
 import { FragmentStatus } from '../dtos';
 
-
 export interface Fragment {
   start: number;  // Inclusive start byte
   end: number;    // Inclusive end byte
@@ -20,40 +19,47 @@ export interface IRanges {
 }
 
 /**
- * Ranges class is used to keep track of the ranges of the file that are downloaded.
- * The start-end it produces are INCLUSIVE. If it says download 0-10 it means download bytes 0 to 10 inclusive.
- * Thus, when specifying ranges to download, the end should be the last byte to download and should not subtract 1.
+ * Ranges class tracks file download progress using inclusive byte ranges.
+ * Ranges are INCLUSIVE: 0-10 means bytes 0 through 10 (11 bytes total).
  */
 export class Ranges implements IRanges {
   private _ranges: Fragment[] = [];
 
   get ranges(): Fragment[] {
-    // last fragment end === Number.MAX_SAFE_INTEGER remove it from return list
+    // Filter out infinite ranges from public interface
     return this._ranges.filter((fragment) => fragment.end !== Number.MAX_SAFE_INTEGER);
   }
 
-  setSize(newSize: number | undefined) {
+  setSize(newSize: number | undefined): void {
     if (this._ranges.length === 0) {
       if (newSize !== undefined) {
         this._ranges.push({ start: 0, end: newSize - 1, status: FragmentStatus.pending });
       } else {
         this._ranges.push({ start: 0, end: Number.MAX_SAFE_INTEGER, status: FragmentStatus.pending });
       }
-    }
-
-    if (newSize === undefined) {
-      // if last range is not MAX_SAFE_INTEGER add it
-      if (this._ranges[this._ranges.length - 1].end !== Number.MAX_SAFE_INTEGER) {
-        const tail = this._ranges[this._ranges.length - 1];
-        this._ranges.push({ start: tail.start + 1, end: Number.MAX_SAFE_INTEGER, status: FragmentStatus.pending });
-      }
-
       return;
     }
 
-    const tail = this._ranges[this._ranges.length - 1];
-    if (tail.end < newSize - 1) {
-      this._ranges.push({ start: tail.end + 1, end: newSize - 1, status: FragmentStatus.pending });
+    const lastFragment = this._ranges[this._ranges.length - 1];
+    
+    if (newSize === undefined) {
+      // Convert to infinite size if not already
+      if (lastFragment.end !== Number.MAX_SAFE_INTEGER) {
+        this._ranges.push({ 
+          start: lastFragment.end + 1, 
+          end: Number.MAX_SAFE_INTEGER, 
+          status: FragmentStatus.pending 
+        });
+      }
+    } else {
+      // Extend to new size if needed
+      if (lastFragment.end < newSize - 1) {
+        this._ranges.push({ 
+          start: lastFragment.end + 1, 
+          end: newSize - 1, 
+          status: FragmentStatus.pending 
+        });
+      }
     }
   }
 
@@ -62,98 +68,70 @@ export class Ranges implements IRanges {
   }
 
   markAs(start: number, end: number, status: FragmentStatus): void {
+    // Validate range bounds
     if (this.size !== undefined) {
       if (start < 0 || end >= this.size || start > end) {
-        throw new Error('Invalid range');
+        throw new Error(`Invalid range: ${start}-${end} (file size: ${this.size})`);
       }
     }
 
     const newFragment: Fragment = { start, end, status };
-    const mergedRanges: Fragment[] = [];
+    const result: Fragment[] = [];
 
-    for (const existingFragment of this._ranges) {
-      if (existingFragment.end < start || existingFragment.start > end) {
-        // No overlap, keep the existing fragment as is.
-        mergedRanges.push(existingFragment);
+    for (const existing of this._ranges) {
+      if (existing.end < start || existing.start > end) {
+        // No overlap - keep existing fragment
+        result.push(existing);
       } else {
-        // Overlap detected, adjust the existing fragment.
-        if (existingFragment.start < start) {
-          mergedRanges.push({ start: existingFragment.start, end: start - 1, status: existingFragment.status });
+        // Overlap - split existing fragment around new range
+        if (existing.start < start) {
+          result.push({ 
+            start: existing.start, 
+            end: start - 1, 
+            status: existing.status 
+          });
         }
-
-        if (existingFragment.end > end) {
-          mergedRanges.push({ start: end + 1, end: existingFragment.end, status: existingFragment.status });
+        if (existing.end > end) {
+          result.push({ 
+            start: end + 1, 
+            end: existing.end, 
+            status: existing.status 
+          });
         }
       }
     }
 
-    mergedRanges.push(newFragment);
-
-    // Sort and merge adjacent fragments
-    mergedRanges.sort((a, b) => a.start - b.start);
-    const finalRanges: Fragment[] = [];
-    let currentFragment: Fragment | undefined = mergedRanges[0];
-
-    for (let i = 1; i < mergedRanges.length; i++) {
-      const nextFragment = mergedRanges[i];
-
-      if (currentFragment.end + 1 === nextFragment.start && currentFragment.status === nextFragment.status) {
-        // Merge adjacent fragments with the same status
-        currentFragment.end = nextFragment.end;
-      } else {
-        finalRanges.push(currentFragment);
-        currentFragment = nextFragment;
-      }
-    }
-
-    if (currentFragment) {
-      finalRanges.push(currentFragment);
-    }
-
-    this._ranges = finalRanges;
+    result.push(newFragment);
+    this._ranges = this.mergeAdjacentFragments(result);
   }
 
-  // findRangeOf(size: number, status: FragmentStatus): Fragment | undefined {
-  //   for (const fragment of this.ranges) {
-  //     if (fragment.status === status && fragment.end - fragment.start + 1 >= size) {
-  //       return fragment;
-  //     }
-  //   }
-  //   return undefined;
-  // }
-
-  // findSequenceOfAtLeast(size: number, status: FragmentStatus): Fragment | undefined {
-  //   for (const fragment of this.ranges) {
-  //     if (fragment.status === status && fragment.end - fragment.start + 1 >= size) {
-  //       const newFragment: Fragment = { start: fragment.start, end: fragment.start + size - 1, status };
-  //       return newFragment;
-  //     }
-  //   }
-  //   return undefined;
-  // }
-
+  /**
+   * Find a fragment of at least the specified size with the given status.
+   * Returns the largest available fragment if none meet the size requirement.
+   */
   findSequenceOfAtLeast(size: number, status: FragmentStatus): Fragment | undefined {
-    let closestMatch: Fragment | undefined = undefined;
-    let closestMatchSize = Number.MIN_SAFE_INTEGER;
+    let bestMatch: Fragment | undefined = undefined;
+    let bestSize = 0;
 
     for (const fragment of this._ranges) {
       if (fragment.status === status) {
-        if (fragment.end - fragment.start + 1 >= size) {
+        const fragmentSize = fragment.end - fragment.start + 1;
+        
+        if (fragmentSize >= size) {
+          // Found exact or larger match - return requested size
           return { start: fragment.start, end: fragment.start + size - 1, status };
         }
-
-        if (fragment.end - fragment.start + 1 > closestMatchSize) {
-          closestMatch = fragment;
-          closestMatchSize = fragment.end - fragment.start;
+        
+        if (fragmentSize > bestSize) {
+          // Track largest available fragment
+          bestMatch = fragment;
+          bestSize = fragmentSize;
         }
       }
     }
 
-    if (closestMatch) {
-      return { start: closestMatch.start, end: closestMatch.end, status };
-    }
-
-    return undefined;
+    // Return largest available fragment if no exact match
+    return bestMatch ? { start: bestMatch.start, end: bestMatch.end, status } : undefined;
   }
 
   findFirst(status: FragmentStatus): Fragment | undefined {
@@ -171,37 +149,52 @@ export class Ranges implements IRanges {
   }
 
   count(status: FragmentStatus): number {
-    // Add all the sizes of the fragments that match the status
-    return this.ranges.reduce((acc, fragment) => {
-      if (fragment.status === status) {
-        return acc + (fragment.end - fragment.start + 1);
-      }
-      return acc;
+    return this.ranges.reduce((total, fragment) => {
+      return fragment.status === status 
+        ? total + (fragment.end - fragment.start + 1)
+        : total;
     }, 0);
   }
 
   changeAll(fromStatus: FragmentStatus, toStatus: FragmentStatus): void {
-    const updatedRanges: Fragment[] = [];
-
-    for (const fragment of this._ranges) {
-      if (fragment.status === fromStatus) {
-        // Change the status to the new one (toStatus)
-        fragment.status = toStatus;
-      }
-
-      if (updatedRanges.length === 0 || updatedRanges[updatedRanges.length - 1].status !== fragment.status) {
-        updatedRanges.push({ ...fragment });
-      } else {
-        // Merge adjacent fragments with the same status
-        updatedRanges[updatedRanges.length - 1].end = fragment.end;
-      }
-    }
-
-    this._ranges = updatedRanges;
+    // Update status and merge adjacent fragments with same status
+    const updated = this._ranges.map(fragment => ({
+      ...fragment,
+      status: fragment.status === fromStatus ? toStatus : fragment.status
+    }));
+    
+    this._ranges = this.mergeAdjacentFragments(updated);
   }
 
   isFinite(): boolean {
-    return this._ranges[this._ranges.length - 1].end !== Number.MAX_SAFE_INTEGER;
+    return this._ranges[this._ranges.length - 1]?.end !== Number.MAX_SAFE_INTEGER;
+  }
+
+  /**
+   * Merge adjacent fragments with the same status
+   */
+  private mergeAdjacentFragments(fragments: Fragment[]): Fragment[] {
+    if (fragments.length === 0) return [];
+
+    const sorted = fragments.sort((a, b) => a.start - b.start);
+    const merged: Fragment[] = [sorted[0]];
+
+    for (let i = 1; i < sorted.length; i++) {
+      const current = sorted[i];
+      const last = merged[merged.length - 1];
+
+      if (last.end + 1 === current.start && last.status === current.status) {
+        // Merge adjacent fragments with same status
+        last.end = current.end;
+      } else {
+        merged.push(current);
+      }
+    }
+
+    return merged;
   }
 }
+
+
+
 
