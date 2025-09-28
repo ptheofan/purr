@@ -5,6 +5,7 @@ import { Menu, MenuItem, MenuItemStyles, Sidebar, sidebarClasses, SubMenu } from
 import { Link, useLocation } from 'react-router-dom';
 import HomeOutlinedIcon from '@mui/icons-material/HomeOutlined';
 import styled from '@emotion/styled';
+import { DevToolbar } from '../../components/DevToolbar';
 
 interface ItemProps {
   id: string;
@@ -235,34 +236,45 @@ const Leftbar = () => {
       rootStyles={ {
         [`.${ sidebarClasses.container }`]: {
           background: `${ colors.primary[400] }`,
+          display: 'flex',
+          flexDirection: 'column',
+          height: '100vh',
         },
         borderColor: colors.primary[theme.palette.mode === 'dark' ? 500 : 900],
       } }
     >
-      <StyledSidebarHeader>
-        <div style={ { display: 'flex', alignItems: 'center' } }>
-          <img src={ `/purrito.png` } alt="logo" style={ {
-            height: 40,
-          } }/>
-          <Typography variant="h4" style={ { color: colors.grey[100], marginLeft: 10 } }>
-            Purrito
+      {/* Top section with header and navigation */}
+      <div style={{ flex: '1', overflow: 'auto' }}>
+        <StyledSidebarHeader>
+          <div style={ { display: 'flex', alignItems: 'center' } }>
+            <img src={ `/purrito.png` } alt="logo" style={ {
+              height: 40,
+            } }/>
+            <Typography variant="h4" style={ { color: colors.grey[100], marginLeft: 10 } }>
+              Purrito
+            </Typography>
+          </div>
+        </StyledSidebarHeader>
+
+        <div style={ { padding: '0 24px', marginBottom: '8px' } }>
+          <Typography
+            variant="body2"
+            fontWeight={ 600 }
+            style={ { opacity: isCollapsed ? 0 : 0.7, letterSpacing: '0.5px' } }
+          >
+            General
           </Typography>
         </div>
-      </StyledSidebarHeader>
 
-      <div style={ { padding: '0 24px', marginBottom: '8px' } }>
-        <Typography
-          variant="body2"
-          fontWeight={ 600 }
-          style={ { opacity: isCollapsed ? 0 : 0.7, letterSpacing: '0.5px' } }
-        >
-          General
-        </Typography>
+        <Menu menuItemStyles={ menuItemStyles }>
+          { renderItems(navItems, activeSubmenus, selected, setSelected) }
+        </Menu>
       </div>
-
-      <Menu menuItemStyles={ menuItemStyles }>
-        { renderItems(navItems, activeSubmenus, selected, setSelected) }
-      </Menu>
+      
+      {/* Bottom section with DevToolbar */}
+      <div style={{ marginTop: 'auto' }}>
+        <DevToolbar />
+      </div>
     </Sidebar>
   );
 };

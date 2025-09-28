@@ -9,7 +9,6 @@ import { RetryLink } from '@apollo/client/link/retry';
 import { GraphQLWsLink } from '@apollo/client/link/subscriptions';
 import { createClient } from 'graphql-ws';
 import { MockProvider } from './providers/MockProvider';
-import { DevToolbar } from './components/DevToolbar';
 import { isMockEnabled } from './config/mock';
 import './utils/mock-utils'; // Initialize mock utilities
 
@@ -66,7 +65,6 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
           <App />
         )}
       </MockProvider>
-      <DevToolbar />
     </BrowserRouter>
   </React.StrictMode>,
 );

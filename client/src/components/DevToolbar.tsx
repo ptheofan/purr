@@ -7,7 +7,8 @@ import {
   Typography, 
   IconButton,
   Tooltip,
-  Collapse
+  Collapse,
+  useTheme
 } from '@mui/material';
 import { 
   Settings as SettingsIcon,
@@ -22,12 +23,15 @@ import {
   toggleMockData, 
   getMockConfig 
 } from '../config/mock';
+import { tokens } from '../../theme';
 
 /**
  * Development toolbar for toggling mock data and other dev features
  * Only shows in development mode
  */
 export const DevToolbar: React.FC = () => {
+  const theme = useTheme();
+  const colors = tokens(theme.palette.mode);
   const [expanded, setExpanded] = useState(false);
   const [mockConfig, setMockConfig] = useState(getMockConfig());
 
@@ -57,23 +61,25 @@ export const DevToolbar: React.FC = () => {
   return (
     <Box
       sx={{
-        position: 'fixed',
-        top: 0,
-        right: 0,
-        zIndex: 9999,
+        width: '100%',
         p: 1,
       }}
     >
       <Paper
-        elevation={3}
+        elevation={1}
         sx={{
           p: 1,
           display: 'flex',
           alignItems: 'center',
           gap: 1,
-          backgroundColor: 'background.paper',
+          backgroundColor: theme.palette.mode === 'dark' 
+            ? colors.primary[450] 
+            : colors.primary[100],
           border: '1px solid',
-          borderColor: 'divider',
+          borderColor: theme.palette.mode === 'dark' 
+            ? colors.grey[700] 
+            : colors.grey[300],
+          borderRadius: 1,
         }}
       >
         {/* Toggle Button */}
@@ -119,32 +125,39 @@ export const DevToolbar: React.FC = () => {
       {/* Expanded Panel */}
       <Collapse in={expanded}>
         <Paper
-          elevation={3}
+          elevation={2}
           sx={{
             mt: 1,
             p: 2,
-            minWidth: 300,
-            backgroundColor: 'background.paper',
+            width: '100%',
+            backgroundColor: theme.palette.mode === 'dark' 
+              ? colors.primary[500] 
+              : colors.primary[50],
             border: '1px solid',
-            borderColor: 'divider',
+            borderColor: theme.palette.mode === 'dark' 
+              ? colors.grey[600] 
+              : colors.grey[200],
+            borderRadius: 1,
           }}
         >
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-            <BugReportIcon color="primary" />
-            <Typography variant="h6">Development Tools</Typography>
+            <BugReportIcon sx={{ color: colors.accent1[theme.palette.mode === 'dark' ? 400 : 500] }} />
+            <Typography variant="h6" sx={{ color: colors.grey[theme.palette.mode === 'dark' ? 100 : 800] }}>
+              Development Tools
+            </Typography>
           </Box>
 
           <Box sx={{ mb: 2 }}>
-            <Typography variant="subtitle2" gutterBottom>
+            <Typography variant="subtitle2" gutterBottom sx={{ color: colors.grey[theme.palette.mode === 'dark' ? 200 : 700] }}>
               Mock Data Status
             </Typography>
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" sx={{ color: colors.grey[theme.palette.mode === 'dark' ? 300 : 600] }}>
               {getMockStatus()}
             </Typography>
           </Box>
 
           <Box sx={{ mb: 2 }}>
-            <Typography variant="subtitle2" gutterBottom>
+            <Typography variant="subtitle2" gutterBottom sx={{ color: colors.grey[theme.palette.mode === 'dark' ? 200 : 700] }}>
               Quick Actions
             </Typography>
             <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
@@ -168,14 +181,38 @@ export const DevToolbar: React.FC = () => {
           </Box>
 
           <Box>
-            <Typography variant="subtitle2" gutterBottom>
+            <Typography variant="subtitle2" gutterBottom sx={{ color: colors.grey[theme.palette.mode === 'dark' ? 200 : 700] }}>
               How to Control Mock Data
             </Typography>
-            <Typography variant="body2" color="text.secondary" component="div">
+            <Typography variant="body2" sx={{ color: colors.grey[theme.palette.mode === 'dark' ? 300 : 600] }} component="div">
               <Box component="ul" sx={{ m: 0, pl: 2 }}>
-                <li>URL: <code>?mock=true</code> or <code>?mock=false</code></li>
-                <li>Local Storage: <code>useMockData</code> key</li>
-                <li>Environment: <code>VITE_USE_MOCK_DATA=true</code></li>
+                <li>URL: <code style={{ 
+                  backgroundColor: theme.palette.mode === 'dark' ? colors.primary[600] : colors.grey[200],
+                  color: theme.palette.mode === 'dark' ? colors.accent1[400] : colors.accent1[600],
+                  padding: '2px 4px',
+                  borderRadius: '3px',
+                  fontSize: '0.85em'
+                }}>?mock=true</code> or <code style={{ 
+                  backgroundColor: theme.palette.mode === 'dark' ? colors.primary[600] : colors.grey[200],
+                  color: theme.palette.mode === 'dark' ? colors.accent1[400] : colors.accent1[600],
+                  padding: '2px 4px',
+                  borderRadius: '3px',
+                  fontSize: '0.85em'
+                }}>?mock=false</code></li>
+                <li>Local Storage: <code style={{ 
+                  backgroundColor: theme.palette.mode === 'dark' ? colors.primary[600] : colors.grey[200],
+                  color: theme.palette.mode === 'dark' ? colors.accent1[400] : colors.accent1[600],
+                  padding: '2px 4px',
+                  borderRadius: '3px',
+                  fontSize: '0.85em'
+                }}>useMockData</code> key</li>
+                <li>Environment: <code style={{ 
+                  backgroundColor: theme.palette.mode === 'dark' ? colors.primary[600] : colors.grey[200],
+                  color: theme.palette.mode === 'dark' ? colors.accent1[400] : colors.accent1[600],
+                  padding: '2px 4px',
+                  borderRadius: '3px',
+                  fontSize: '0.85em'
+                }}>VITE_USE_MOCK_DATA=true</code></li>
                 <li>This toolbar (development only)</li>
               </Box>
             </Typography>
