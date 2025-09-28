@@ -162,9 +162,11 @@ const Downloads = () => {
                 {/* Grouped Items by Parent Directory */}
                 {parentDirectories.map((parentDir) => (
                   <Box key={parentDir} sx={{ mb: 2 }}>
-                    <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 'medium' }}>
-                      {parentDir} ({groupedItems[parentDir].length} items)
-                    </Typography>
+                    {parentDir !== 'Root' && (
+                      <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 'medium' }}>
+                        {parentDir} ({groupedItems[parentDir].length} items)
+                      </Typography>
+                    )}
                     <List dense>
                       {groupedItems[parentDir].map((item) => (
                         <ListItem key={item.id} divider>
