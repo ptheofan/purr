@@ -1,6 +1,6 @@
 import { Box, Typography, Chip, IconButton } from '@mui/material';
 import { ExpandMore, ExpandLess } from '@mui/icons-material';
-import { GroupBasicInfoFragment } from '../../../fragments';
+import { GroupBasicInfoFragment } from '../../../__generated__/graphql';
 
 interface GroupHeaderProps {
   group: GroupBasicInfoFragment;

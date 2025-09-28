@@ -1,6 +1,5 @@
 import { Card, CardContent, Typography } from '@mui/material';
-import { getFragmentData } from '../../../__generated__';
-import { DownloadManagerStatsFragment } from '../../../fragments';
+import { DownloadManagerStatsFragment } from '../../../__generated__/graphql';
 import { prettyBytes } from '../../../helpers/pretty.helper';
 
 interface DownloadManagerStatsProps {
