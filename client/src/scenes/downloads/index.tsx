@@ -161,13 +161,13 @@ const Downloads = () => {
               <Collapse in={isExpanded}>
                 {/* Grouped Items by Parent Directory */}
                 {parentDirectories.map((parentDir) => (
-                  <Box key={parentDir} sx={{ mb: 2 }}>
+                  <Box key={parentDir} sx={{ mb: 0 }}>
                     {parentDir !== 'Root' && (
                       <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 'medium' }}>
                         {parentDir} ({groupedItems[parentDir].length} items)
                       </Typography>
                     )}
-                    <List dense>
+                    <List dense sx={{ pb: 0 }}>
                       {groupedItems[parentDir].map((item, index) => (
                         <ListItem 
                           key={item.id} 
