@@ -168,8 +168,11 @@ const Downloads = () => {
                       </Typography>
                     )}
                     <List dense>
-                      {groupedItems[parentDir].map((item) => (
-                        <ListItem key={item.id} divider>
+                      {groupedItems[parentDir].map((item, index) => (
+                        <ListItem 
+                          key={item.id} 
+                          divider={index < groupedItems[parentDir].length - 1}
+                        >
                           <ListItemText
                             primary={item.name}
                             secondary={
