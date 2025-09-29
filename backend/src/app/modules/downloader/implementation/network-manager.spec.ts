@@ -123,7 +123,14 @@ describe('NetworkManager', () => {
       axiosError.response = { status: 404 };
       jest.mocked(axios.head).mockRejectedValueOnce(axiosError);
 
+      // Spy on the logger to verify error logging and suppress console output
+      const loggerSpy = jest.spyOn((networkManager as any).logger, 'error').mockImplementation(() => {});
+
       await expect(networkManager.getFileSize('http://example.com/file')).rejects.toThrow('Failed to get file size: Network error');
+      expect(loggerSpy).toHaveBeenCalledWith('Failed to get file size from http://example.com/file: Network error');
+
+      // Restore the logger
+      loggerSpy.mockRestore();
     });
 
     it('should throw error when disposed', async () => {

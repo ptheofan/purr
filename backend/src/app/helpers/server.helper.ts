@@ -1,4 +1,7 @@
 import axios, { AxiosRequestConfig, AxiosResponse } from 'axios';
+import { Logger } from '@nestjs/common';
+
+const logger = new Logger('ServerHelper');
 
 /**
  * Queries the file size from a URL using HEAD request
@@ -19,7 +22,7 @@ export async function queryFileSize(url: string, axiosOpts?: AxiosRequestConfig)
     return undefined;
   } catch (error) {
     // Log error for debugging but don't throw - return undefined instead
-    console.warn(`Failed to query file size for ${url}:`, error);
+    logger.warn(`Failed to query file size for ${url}:`, error);
     return undefined;
   }
 }

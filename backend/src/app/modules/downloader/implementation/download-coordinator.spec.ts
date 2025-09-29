@@ -160,9 +160,16 @@ describe('DownloadCoordinator', () => {
       jest.spyOn(downloadCoordinator as any, 'handleNetworkStatus').mockRejectedValue(mockError);
       mockOptions.errorCallback = jest.fn();
 
+      // Spy on the logger to verify error logging and suppress console output
+      const loggerSpy = jest.spyOn((downloadCoordinator as any).logger, 'error').mockImplementation(() => {});
+
       await expect(downloadCoordinator.start()).rejects.toThrow(mockError);
       expect(mockOptions.errorCallback).toHaveBeenCalledWith(downloadCoordinator, mockError);
       expect(mockFileManager.cleanupPartialFile).toHaveBeenCalled();
+      expect(loggerSpy).toHaveBeenCalledWith('Download failed: Test error', expect.any(String));
+
+      // Restore the logger
+      loggerSpy.mockRestore();
     });
 
     it('should dispose properly when disposed before start', async () => {

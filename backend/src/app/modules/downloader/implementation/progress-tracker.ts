@@ -61,7 +61,8 @@ export class ProgressTracker extends EventEmitter2 {
 
     // Log significant progress updates
     if (this.bytesSinceLastProgress > 1024 * 1024) { // Every 1MB
-      this.logger.debug(`Progress update: +${newBytes} bytes (total accumulated: ${this.bytesSinceLastProgress})`);
+      // Disabled for now, as it's too verbose
+      // this.logger.debug(`Progress update: +${newBytes} bytes (total accumulated: ${this.bytesSinceLastProgress})`);
     }
   }
 

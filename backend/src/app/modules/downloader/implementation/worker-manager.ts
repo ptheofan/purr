@@ -58,7 +58,7 @@ export class WorkerManager extends EventEmitter2 {
     const removed = this.workers.delete(workerId);
 
     if (removed) {
-      this.logger.debug(`Removed worker ${workerId}`);
+      // this.logger.debug(`Removed worker ${workerId}`);
       this.emit('worker.removed', worker);
 
       // If all workers are removed, resolve any pending waitForWorkersToStop promises

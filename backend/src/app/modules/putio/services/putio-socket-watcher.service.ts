@@ -52,29 +52,12 @@ export class PutioSocketWatcherService implements OnModuleInit {
       this.logger.error(`Error from put.io socket`);
     });
 
-    // this.client.on(EVENT_TYPE.TRANSFER_CREATE, (payload) => {
-    //   console.log('TRANSFER_CREATE', payload);
-    // });
-
     this.client.on(EVENT_TYPE.TRANSFER_UPDATE, async (payload) => {
       switch (payload.status) {
         case 'COMPLETED':
           await this.putioFileTransferCompleted(payload.save_parent_id, payload.file_id);
       }
-      // console.log('TRANSFER_UPDATE', payload);
     });
-
-    // this.client.on(EVENT_TYPE.TRANSFER_DELETE, (payload) => {
-    //   console.log('TRANSFER_DELETE', payload);
-    // });
-
-    // this.client.on(EVENT_TYPE.TRANSFERS_COUNT, (payload) => {
-    //   console.log('TRANSFERS_COUNT', payload);
-    // });
-
-    // this.client.on(EVENT_TYPE.TRANSFERS_CLEAN, (payload) => {
-    //   console.log('TRANSFERS_CLEAN', payload);
-    // });
   }
 
   /**

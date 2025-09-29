@@ -56,6 +56,7 @@ describe('DownloadManagerResolver', () => {
             get downloaderArbitraryDownloadsEnabled() { return true; },
             set downloaderArbitraryDownloadsEnabled(value: boolean) { /* mock setter */ },
             downloaderArbitraryDownloadsRootFolder: '/downloads',
+            downloaderArbitraryDownloadsRestrictPaths: true,
           },
         },
         {

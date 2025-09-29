@@ -1,6 +1,9 @@
 import { resolve, dirname, parse } from 'path';
 import { existsSync, readFileSync } from 'fs';
 import { fileExistsSync } from 'tsconfig-paths/lib/filesystem';
+import { Logger } from '@nestjs/common';
+
+const logger = new Logger('EnvPathsUtil');
 
 // Environment files in order of precedence (1st file loaded last, overriding others)
 const envFiles = ['.env.local', process.env.NODE_ENV && `.env.${process.env.NODE_ENV}`, '.env'];
@@ -23,7 +26,7 @@ function isMonorepoRoot(directory: string): boolean {
       (Array.isArray(packageJson.workspaces) && packageJson.workspaces.includes('backend'))
     );
   } catch (error) {
-    console.error('Error reading package.json:', error);
+    logger.error('Error reading package.json:', error);
     return false;
   }
 }
@@ -46,7 +49,7 @@ export function getEnvFilePaths(): string[] {
   }
 
   if (!projectRoot) {
-    console.warn('Could not find monorepo root with @purr/monorepo package.json');
+    logger.warn('Could not find monorepo root with @purr/monorepo package.json');
     return [];
   }
 

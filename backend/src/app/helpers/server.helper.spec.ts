@@ -1,5 +1,6 @@
 import axios from 'axios';
 import MockAdapter from 'axios-mock-adapter';
+import { Logger } from '@nestjs/common';
 import { queryFileSize, queryRangesSupport } from './server.helper';
 
 describe('server.helper', () => {
@@ -7,8 +8,8 @@ describe('server.helper', () => {
 
   beforeEach(() => {
     mock = new MockAdapter(axios);
-    // Suppress console.warn during tests
-    jest.spyOn(console, 'warn').mockImplementation(() => {});
+    // Mock Logger.warn for test verification and suppression
+    jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => {});
   });
 
   afterEach(() => {
@@ -64,7 +65,7 @@ describe('server.helper', () => {
       const result = await queryFileSize(testUrl);
 
       expect(result).toBeUndefined();
-      expect(console.warn).toHaveBeenCalledWith(
+      expect(Logger.prototype.warn).toHaveBeenCalledWith(
         `Failed to query file size for ${testUrl}:`,
         expect.any(Error)
       );
@@ -76,7 +77,7 @@ describe('server.helper', () => {
       const result = await queryFileSize(testUrl);
 
       expect(result).toBeUndefined();
-      expect(console.warn).toHaveBeenCalledWith(
+      expect(Logger.prototype.warn).toHaveBeenCalledWith(
         `Failed to query file size for ${testUrl}:`,
         expect.any(Error)
       );

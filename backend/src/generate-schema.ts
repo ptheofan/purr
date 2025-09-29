@@ -1,4 +1,5 @@
 import { NestFactory } from '@nestjs/core';
+import { Logger } from '@nestjs/common';
 import { AppModule } from './app/app.module';
 import { GraphQLSchemaHost } from '@nestjs/graphql';
 import { printSchema } from 'graphql';
@@ -18,16 +19,18 @@ import { config } from 'dotenv';
  * Hand-written types in client/src/types/graphql.ts are the source of truth.
  */
 async function generateSchema() {
+  const logger = new Logger('SchemaGenerator');
+
   try {
-    console.log('Generating GraphQL schema for development reference...');
+    logger.log('Generating GraphQL schema for development reference...');
 
     // Load CI environment configuration to disable external services
     const ciEnvPath = join(process.cwd(), '..', '.env.ci');
     if (existsSync(ciEnvPath)) {
-      console.log('Loading CI environment configuration...');
+      logger.log('Loading CI environment configuration...');
       config({ path: ciEnvPath });
     } else {
-      console.warn('No .env.ci file found, using default environment');
+      logger.warn('No .env.ci file found, using default environment');
     }
 
     // Create the application context but don't listen
@@ -65,8 +68,8 @@ async function generateSchema() {
     const schemaPath = join(process.cwd(), 'schema.gql');
     writeFileSync(schemaPath, printSchema(schema));
 
-    console.log('✅ GraphQL schema generated successfully at:', schemaPath);
-    console.log('📝 This file is for development reference only - not used in builds');
+    logger.log('✅ GraphQL schema generated successfully at:', schemaPath);
+    logger.log('📝 This file is for development reference only - not used in builds');
 
     // Close the application with timeout
     const closePromise = app.close();
@@ -77,15 +80,15 @@ async function generateSchema() {
     try {
       await Promise.race([closePromise, closeTimeout]);
     } catch (error) {
-      console.warn('Warning: App close timed out, forcing exit');
+      logger.warn('Warning: App close timed out, forcing exit');
     }
 
     // Force exit to ensure the process terminates
     process.exit(0);
   } catch (error) {
-    console.error('❌ Failed to generate GraphQL schema:', error);
+    logger.error('❌ Failed to generate GraphQL schema:', error);
     if (error instanceof Error) {
-      console.error('Error details:', error.message);
+      logger.error('Error details:', error.message);
     }
     process.exit(1);
   }
@@ -93,6 +96,7 @@ async function generateSchema() {
 
 // Run the schema generation
 generateSchema().catch((error) => {
-  console.error('Failed to generate schema:', error);
+  const logger = new Logger('SchemaGenerator');
+  logger.error('Failed to generate schema:', error);
   process.exit(1);
 });

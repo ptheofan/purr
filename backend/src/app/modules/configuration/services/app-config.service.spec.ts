@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
+import { Logger } from '@nestjs/common';
 import { AppConfigService, EnvKeys } from './app-config.service';
 import * as process from 'process';
 
@@ -210,7 +211,20 @@ describe('AppConfigService', () => {
         }),
       } as any;
 
+      // Mock Logger to suppress the expected error logs but verify they are called
+      const loggerErrorSpy = jest.spyOn(Logger.prototype, 'error').mockImplementation(() => {});
+      const loggerWarnSpy = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => {});
+
       expect(() => new AppConfigService(invalidMockConfigService)).toThrow('Configuration validation failed');
+
+      // Verify that configuration validation errors were logged
+      expect(loggerErrorSpy).toHaveBeenCalledWith('❌ Configuration validation failed!');
+      expect(loggerErrorSpy).toHaveBeenCalledWith(expect.stringContaining('putioClientId: Required'));
+      expect(loggerWarnSpy).toHaveBeenCalledWith('Please fix the following configuration errors:');
+
+      // Restore Logger methods
+      loggerErrorSpy.mockRestore();
+      loggerWarnSpy.mockRestore();
     });
   });
 

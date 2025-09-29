@@ -91,8 +91,37 @@ describe('DownloadManagerService', () => {
     const module: TestingModule = await Test.createTestingModule({
       imports: [],
       providers: [
-        ConfigService,
-        AppConfigService,
+        {
+          provide: ConfigService,
+          useValue: {
+            get: jest.fn((key: string) => {
+              const mockConfig = {
+                NODE_ENV: 'test',
+                PUTIO_CLIENT_ID: '123',
+                PUTIO_CLIENT_SECRET: 'secret',
+                PUTIO_AUTH: 'auth',
+                DOWNLOADER_ARBITRARY_DOWNLOADS_ROOT_FOLDER: '/tmp',
+              };
+              return mockConfig[key];
+            }),
+          },
+        },
+        {
+          provide: AppConfigService,
+          useValue: {
+            concurrentGroups: 2,
+            concurrentSmallFiles: 8,
+            concurrentLargeFiles: 2,
+            downloaderChunkSize: 8388608,
+            downloaderPerformanceMonitoringEnabled: true,
+            downloaderPerformanceMonitoringTime: 10,
+            downloaderPerformanceMonitoringSpeed: 6710886,
+            uiProgressUpdateInterval: 333,
+            downloaderArbitraryDownloadsEnabled: true,
+            downloaderArbitraryDownloadsRootFolder: '/tmp',
+            downloaderArbitraryDownloadsRestrictPaths: true,
+          },
+        },
         DownloadManagerService,
         DownloadFactory,
         DownloadGroupsRepository,

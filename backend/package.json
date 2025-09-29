@@ -99,6 +99,7 @@
     ],
     "coverageDirectory": "../coverage",
     "testEnvironment": "node",
-    "setupFilesAfterEnv": ["<rootDir>/../jest.setup.ts"]
+    "setupFilesAfterEnv": ["<rootDir>/../jest.setup.ts"],
+    "forceExit": true
   }
 }

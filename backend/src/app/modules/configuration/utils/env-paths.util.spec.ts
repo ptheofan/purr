@@ -2,6 +2,7 @@ import { getEnvFilePaths } from './env-paths.util';
 import { existsSync, readFileSync } from 'fs';
 import { resolve } from 'path';
 import { fileExistsSync } from 'tsconfig-paths/lib/filesystem';
+import { Logger } from '@nestjs/common';
 
 // Mock dependencies
 jest.mock('fs');
@@ -21,9 +22,9 @@ describe('env-paths.util', () => {
     // Mock process.cwd
     process.cwd = mockCwd;
     
-    // Mock console methods to avoid test output noise
-    jest.spyOn(console, 'warn').mockImplementation();
-    jest.spyOn(console, 'error').mockImplementation();
+    // Mock Logger methods for test verification and noise suppression
+    jest.spyOn(Logger.prototype, 'warn').mockImplementation();
+    jest.spyOn(Logger.prototype, 'error').mockImplementation();
   });
 
   afterEach(() => {
@@ -40,7 +41,7 @@ describe('env-paths.util', () => {
       const result = getEnvFilePaths();
 
       expect(result).toEqual([]);
-      expect(console.warn).toHaveBeenCalledWith('Could not find monorepo root with @purr/monorepo package.json');
+      expect(Logger.prototype.warn).toHaveBeenCalledWith('Could not find monorepo root with @purr/monorepo package.json');
     });
 
     it('should find monorepo root by package name', () => {
@@ -124,7 +125,7 @@ describe('env-paths.util', () => {
       const result = getEnvFilePaths();
 
       expect(result).toEqual([]);
-      expect(console.error).toHaveBeenCalledWith('Error reading package.json:', expect.any(Error));
+      expect(Logger.prototype.error).toHaveBeenCalledWith('Error reading package.json:', expect.any(Error));
     });
 
     it('should traverse up directory tree correctly', () => {

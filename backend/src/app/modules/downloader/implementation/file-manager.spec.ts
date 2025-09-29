@@ -77,15 +77,29 @@ describe('FileManager', () => {
       const error = new Error('Failed to create directory');
       mockedFsp.mkdir.mockRejectedValue(error);
 
+      // Spy on the logger to verify error logging and suppress console output
+      const loggerSpy = jest.spyOn((manager as any).logger, 'error').mockImplementation(() => {});
+
       await expect(manager.initializeFile(1024)).rejects.toThrow('Failed to initialize file: Failed to create directory');
       expect(mockedFs.open).not.toHaveBeenCalled();
+      expect(loggerSpy).toHaveBeenCalledWith('Failed to initialize file: Failed to create directory');
+
+      // Restore the logger
+      loggerSpy.mockRestore();
     });
 
     it('should handle file creation failure', async () => {
       const error = new Error('Failed to create file');
       mockedFs.open.mockRejectedValue(error);
 
+      // Spy on the logger to verify error logging and suppress console output
+      const loggerSpy = jest.spyOn((manager as any).logger, 'error').mockImplementation(() => {});
+
       await expect(manager.initializeFile(1024)).rejects.toThrow('Failed to initialize file: Failed to create file');
+      expect(loggerSpy).toHaveBeenCalledWith('Failed to initialize file: Failed to create file');
+
+      // Restore the logger
+      loggerSpy.mockRestore();
     });
 
     it('should throw error when not configured', async () => {
@@ -125,7 +139,14 @@ describe('FileManager', () => {
       const error = new Error('Failed to open file');
       mockedFs.open.mockRejectedValue(error);
 
+      // Spy on the logger to verify error logging and suppress console output
+      const loggerSpy = jest.spyOn((manager as any).logger, 'error').mockImplementation(() => {});
+
       await expect(manager.openFileForWriting()).rejects.toThrow('Failed to open file for writing: Failed to open file');
+      expect(loggerSpy).toHaveBeenCalledWith('Failed to open file for writing: Failed to open file');
+
+      // Restore the logger
+      loggerSpy.mockRestore();
     });
 
     it('should throw error when not configured', async () => {
