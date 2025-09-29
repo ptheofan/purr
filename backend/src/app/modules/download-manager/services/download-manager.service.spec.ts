@@ -346,6 +346,9 @@ describe('DownloadManagerService', () => {
         'file1.txt': JSON.stringify({ id: 1, name: 'file1.txt', size: 100, crc32: '123456', downloadLink: 'http://example.com/file1.txt' }),
       });
 
+      // Capture error logs as evidence of proper error handling (without console output)
+      const loggerErrorSpy = jest.spyOn(service['logger'], 'error').mockImplementation();
+
       // Mock itemsRepo.filter to throw an error during checkGroupItemsOnDisk
       const filterSpy = jest.spyOn(itemsRepo, 'filter')
         .mockImplementation(() => {
@@ -363,13 +366,25 @@ describe('DownloadManagerService', () => {
       // This tests that our error handling prevents the promise from hanging
       await expect(result.analysisCompletedPromise).resolves.toBeUndefined();
 
+      // Verify error was properly logged as evidence of error handling
+      expect(loggerErrorSpy).toHaveBeenCalledWith(
+        'Failed to analyze items on disk for group 1:',
+        expect.objectContaining({
+          message: 'Simulated repository error during analysis'
+        })
+      );
+
       filterSpy.mockRestore();
+      loggerErrorSpy.mockRestore();
     });
 
     it('should reject analysisCompletedPromise if both analysis and fallback fail', async () => {
       const { vol: volume } = memfs({
         'file1.txt': JSON.stringify({ id: 1, name: 'file1.txt', size: 100, crc32: '123456', downloadLink: 'http://example.com/file1.txt' }),
       });
+
+      // Capture error logs as evidence of proper error handling (without console output)
+      const loggerErrorSpy = jest.spyOn(service['logger'], 'error').mockImplementation();
 
       // Mock itemsRepo.filter to throw an error during checkGroupItemsOnDisk
       const filterSpy = jest.spyOn(itemsRepo, 'filter')
@@ -391,8 +406,23 @@ describe('DownloadManagerService', () => {
       // The promise should reject when both the analysis and fallback fail
       await expect(result.analysisCompletedPromise).rejects.toThrow('Simulated repository error');
 
+      // Verify error was properly logged as evidence of error handling
+      expect(loggerErrorSpy).toHaveBeenCalledWith(
+        'Failed to analyze items on disk for group 1:',
+        expect.objectContaining({
+          message: 'Simulated repository error during analysis'
+        })
+      );
+      expect(loggerErrorSpy).toHaveBeenCalledWith(
+        'Failed to set fallback group state for group 1:',
+        expect.objectContaining({
+          message: 'Simulated repository error'
+        })
+      );
+
       filterSpy.mockRestore();
       updateSpy.mockRestore();
+      loggerErrorSpy.mockRestore();
     });
   });
 

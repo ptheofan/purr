@@ -64,7 +64,12 @@
       "Bash(npm -w backend run test -- --detectOpenHandles --forceExit)",
       "Bash(node:*)",
       "Bash(npm -w backend run test -- --testPathPattern=download-coordinator.spec.ts)",
-      "Bash(npm -w backend run test -- --testPathPattern=\"download-manager|downloader|repository\" --coverage=false)"
+      "Bash(npm -w backend run test -- --testPathPattern=\"download-manager|downloader|repository\" --coverage=false)",
+      "Bash(npm -w backend run test -- --testPathPattern=partial-suffix-integration.spec.ts --verbose)",
+      "Bash(npm -w backend run test -- --testPathPattern=partial-suffix.integration.spec.ts --verbose)",
+      "Bash(npm -w backend run test -- --testPathPattern=download-manager.service.spec.ts -t \"should handle errors in analysisCompletedPromise\" --verbose)",
+      "Bash(npm -w backend run test -- --testPathPattern=download-manager.service.spec.ts -t \"analysisCompletedPromise\" --verbose)",
+      "Bash(*)"
     ],
     "deny": [],
     "ask": []
