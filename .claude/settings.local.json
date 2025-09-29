@@ -7,7 +7,12 @@
       "Bash(npm -w backend run test -- --testPathPattern=concurrency-fix.integration.spec.ts)",
       "Bash(npm -w backend run test -- --testPathPattern=download-manager-concurrency.integration.spec.ts)",
       "Bash(npm run build:*)",
-      "Bash(npm install)"
+      "Bash(npm install)",
+      "Bash(git tag:*)",
+      "Bash(test:*)",
+      "Bash(chmod:*)",
+      "Bash(npm run version:*)",
+      "Bash(./scripts/create-release.sh:*)"
     ],
     "deny": [],
     "ask": []

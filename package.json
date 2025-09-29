@@ -11,7 +11,9 @@
         "backend:debug": "npm -w backend run start:debug",
         "client": "npm -w client run dev",
         "build": "npm -w backend run build && npm -w client run build",
-        "lint": "npm -w backend run lint --if-present && npm -w client run lint --if-present"
+        "lint": "npm -w backend run lint --if-present && npm -w client run lint --if-present",
+        "version": "./scripts/show-version.sh",
+        "release": "./scripts/create-release.sh"
     },
     "dependencies": {
         "graphql-scalars": "^1.24.1",

@@ -17,6 +17,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `npm run codegen` - Generate GraphQL types
 - `npm run codegen:watch` - Watch mode for GraphQL type generation
 
+### Release Management
+- `npm run version` - Show current version and recent releases
+- `npm run release -- <version>` - Create and push a new release (e.g., `npm run release -- 1.0.3`)
+
 ### Testing (Backend)
 - `npm run test` - Run all unit tests
 - `npm run test:watch` - Run tests in watch mode
@@ -106,6 +110,48 @@ purr/
 │   └── vite.config.ts        # Vite configuration
 └── package.json              # Monorepo root (npm workspaces)
 ```
+
+## Release Process
+
+### Creating a New Release
+
+1. **Check current version**:
+   ```bash
+   npm run version
+   ```
+
+2. **Ensure clean working directory**:
+   - All changes committed
+   - On master branch
+   - Synced with remote
+
+3. **Create release**:
+   ```bash
+   npm run release -- 1.0.3
+   ```
+
+4. **What happens automatically**:
+   - Updates version in all `package.json` files (root, backend, client)
+   - Commits version bump
+   - Creates git tag (e.g., `v1.0.3`)
+   - Pushes commit and tag to GitHub
+   - GitHub Actions builds and publishes Docker images with tags:
+     - `purrito:v1.0.3` (with v prefix)
+     - `purrito:1.0.3` (without v prefix)
+     - `purrito:latest`
+
+**Note**: The release script automatically validates that:
+- The version format is valid (X.Y.Z)
+- The new version is greater than the current version
+- The git working directory is clean
+- The version tag doesn't already exist
+
+### Docker Image Tags
+
+- **`:dev`** - Built on every push to master (continuous development)
+- **`:vX.X.X`** - Semantic version with v prefix (e.g., `:v1.0.3`)
+- **`:X.X.X`** - Semantic version without v prefix (e.g., `:1.0.3`)
+- **`:latest`** - Always points to the most recent release
 
 ## Important Notes
 - No external database required - uses in-memory storage

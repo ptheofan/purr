@@ -128,6 +128,48 @@ We are using https://reactrouter.com/en/main (react-router-dom)
 We are using https://nivo.rocks/
 
 
+## Release Management
+
+### Creating a New Release
+
+First, check your current version:
+
+```bash
+npm run version
+```
+
+Then create and publish a new versioned release:
+
+```bash
+npm run release -- 1.0.3
+```
+
+This automated process will:
+1. Show current version and new version
+2. Validate semantic version format (X.Y.Z)
+3. Validate that new version is greater than current version
+4. Check for clean git working directory
+5. Update version in all `package.json` files (root, backend, client)
+6. Commit the version bump
+7. Create git tag (e.g., `v1.0.3`)
+8. Push commit and tag to GitHub
+9. Trigger GitHub Actions to build and publish Docker images
+
+### Docker Image Tags
+
+- **`:dev`** - Automatically built on every push to master branch (continuous development)
+- **`:vX.X.X`** - Semantic version with v prefix (e.g., `:v1.0.3`)
+- **`:X.X.X`** - Semantic version without v prefix (e.g., `:1.0.3`)
+- **`:latest`** - Always points to the most recent stable release
+
+### Release Requirements
+
+Before creating a release:
+- All changes must be committed
+- Working directory must be clean
+- Must be on master branch
+- Branch must be synced with remote
+
 ## Build and Run Docker
 All environment variables with default values and extensive comments can be found in the `.env.example` file.
 
