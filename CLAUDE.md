@@ -11,6 +11,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Build & Quality
 - `npm run build` - Build both client and backend
+- `npm run build:ci` - Build with CI-specific retry logic
+- `npm run ci:clean-install` - Clean dependency installation for CI
 - `npm run lint` - Run ESLint for both client and backend
 - `npm run codegen` - Generate GraphQL types
 - `npm run codegen:watch` - Watch mode for GraphQL type generation
@@ -29,7 +31,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Architecture Overview
 
 ### Technology Stack
-- **Backend**: NestJS with GraphQL/Apollo Server, Node.js 20.x
+- **Backend**: NestJS with GraphQL/Apollo Server, Node.js 24.x
 - **Frontend**: React 18 with Vite, Apollo Client, Material-UI
 - **Testing**: Jest with separate unit and E2E test suites
 - **External Integration**: Put.io API for file management
@@ -112,6 +114,54 @@ purr/
 - Frontend proxies to backend via Vite during development
 
 ## Troubleshooting & Known Issues
+
+### Build System Issues
+
+#### Rollup Native Dependency Error (Fixed as of 2025-09-29)
+
+**Issue**: GitHub Actions failing with "Cannot find module @rollup/rollup-linux-x64-gnu" error.
+
+**Root Cause**:
+- npm optional dependencies bug (https://github.com/npm/cli/issues/4828)
+- Platform-specific Rollup binaries not being resolved correctly in CI
+- Stale package-lock.json entries causing conflicts
+
+**Solution Implemented**:
+1. **CI Workarounds**: Modified `.github/workflows/standard-ci.yml` to:
+   - Use `npm install --legacy-peer-deps` instead of `npm ci`
+   - Clear npm cache before installation
+   - Remove node_modules for clean state
+   - Add build retry logic for client builds
+
+2. **Configuration Files**:
+   - Added `.npmrc` with `legacy-peer-deps=true` and other stability settings
+   - Updated `.nvmrc` to enforce Node.js 24.6.0
+   - Synchronized Node version across all configuration files
+
+3. **Enhanced Scripts**:
+   - Added `npm run ci:clean-install` for clean dependency installation
+   - Added `npm run build:ci` with retry logic
+   - Created `scripts/fix-npm-lock.sh` for regenerating package-lock.json
+
+4. **Vite Configuration**:
+   - Enhanced `vite.config.ts` with better error handling
+   - Added `optimizeDeps` configuration for consistent builds
+   - Increased chunk size limits to handle large dependencies
+
+**Verification**:
+```bash
+# Local verification
+npm run ci:clean-install
+npm run build
+
+# If issues persist, regenerate package-lock.json
+./scripts/fix-npm-lock.sh
+```
+
+**Prevention**:
+- Use Node.js 24.x consistently (check with `node --version`)
+- Run `npm run ci:clean-install` for clean installations
+- Commit regenerated package-lock.json after running fix script
 
 ### Download System Reliability (Fixed as of 2025-09-29)
 

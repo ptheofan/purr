@@ -5,7 +5,9 @@
       "Bash(npm -w backend run test -- --testPathPattern=concurrency-fix.integration.spec.ts --verbose)",
       "Bash(npm -w backend run test -- --testPathPattern=download-manager.service.spec.ts -t \"candidates\" --verbose)",
       "Bash(npm -w backend run test -- --testPathPattern=concurrency-fix.integration.spec.ts)",
-      "Bash(npm -w backend run test -- --testPathPattern=download-manager-concurrency.integration.spec.ts)"
+      "Bash(npm -w backend run test -- --testPathPattern=download-manager-concurrency.integration.spec.ts)",
+      "Bash(npm run build:*)",
+      "Bash(npm install)"
     ],
     "deny": [],
     "ask": []
