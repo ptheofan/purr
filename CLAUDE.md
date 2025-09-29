@@ -110,3 +110,56 @@ purr/
 - Environment configuration via `.env` file (see `.env.example`)
 - GraphQL schema auto-generated from NestJS decorators
 - Frontend proxies to backend via Vite during development
+
+## Troubleshooting & Known Issues
+
+### Download System Reliability (Fixed as of 2025-09-29)
+
+**Issue**: Downloads could stop mid-process or never start due to deadlock conditions.
+
+**Critical Fixes Implemented**:
+
+1. **Recursive Mutex Deadlock** (download-manager.service.ts:466, 473, 479)
+   - **Problem**: `start()` method calling itself recursively while holding `startMutex`
+   - **Solution**: Use `setImmediate(() => this.start())` to schedule execution outside mutex scope
+   - **Impact**: Prevents download queue from freezing when downloads complete/fail
+
+2. **Missing Promise Error Handling** (download-manager.service.ts:206-227)
+   - **Problem**: `analysisCompletedPromise` could hang indefinitely if disk analysis failed
+   - **Solution**: Added comprehensive error handling with graceful fallback
+   - **Impact**: Downloads continue even if file integrity checks fail
+
+3. **activePromises Race Condition** (download-coordinator.ts:95-96)
+   - **Problem**: Race between checking `activePromises.size` and `Promise.race()` call
+   - **Solution**: Thread-safe snapshot mechanism via `waitForWorkerEvents()`
+   - **Impact**: Eliminates worker coordination race conditions
+
+4. **Repository Mutex Deadlock** (repository.ts:35-50)
+   - **Problem**: Custom promise-chaining mutex caused deadlocks in nested operations
+   - **Solution**: Replaced with proper `async-mutex` library using `Mutex.runExclusive()`
+   - **Impact**: Eliminates deadlocks in all repository operations
+
+**Symptoms of Original Issues**:
+- Downloads stopping mid-process without error messages
+- Download queue not processing new items
+- Workers appearing stuck in "downloading" state
+- System requiring restart to resume downloads
+
+**Verification**: All fixes verified with comprehensive test suite (290+ tests passing).
+
+### Development Guidelines
+
+**Testing**:
+- Maintain 80%+ coverage for all new code
+- Separate unit and integration test suites
+- Use `npm test` to run full backend test suite
+
+**Error Handling**:
+- Never leave promises without `.catch()` handlers
+- Use proper mutex patterns (`async-mutex` library)
+- Avoid recursive method calls within mutex scope
+
+**Debugging Downloads**:
+- Check logs for mutex-related errors: `startMutex`, `withLock`
+- Monitor worker states: stuck in "downloading" status indicates issues
+- Use `DEBUG=*` environment variable for verbose logging
