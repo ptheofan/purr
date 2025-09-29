@@ -30,12 +30,12 @@ jobs:
       - name: Extract version from tag
         id: version
         run: |
-          # Extract version from tag (e.g., v1.0.3 or 1.0.3 -> 1.0.3)
-          VERSION="${GITHUB_REF#refs/tags/}"
-          VERSION="${VERSION#v}"
+          # Extract tag (e.g., v1.0.3)
+          TAG="${GITHUB_REF#refs/tags/}"
+          VERSION="${TAG#v}"
+          echo "tag=${TAG}" >> $GITHUB_OUTPUT
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
-          echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
-          echo "Extracted version: ${VERSION}"
+          echo "Building Docker image with tag: ${TAG}"
 
       - name: Build and push Docker image
         uses: docker/build-push-action@3b5e8027fcad23fda98b2e3ac259d8d67585f671
@@ -45,7 +45,6 @@ jobs:
           push: true
           tags: |
             ${{ secrets.DOCKER_USERNAME }}/purrito:${{ steps.version.outputs.tag }}
-            ${{ secrets.DOCKER_USERNAME }}/purrito:${{ steps.version.outputs.version }}
             ${{ secrets.DOCKER_USERNAME }}/purrito:latest
           labels: |
             org.opencontainers.image.version=${{ steps.version.outputs.version }}

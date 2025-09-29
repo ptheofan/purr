@@ -158,8 +158,7 @@ This automated process will:
 ### Docker Image Tags
 
 - **`:dev`** - Automatically built on every push to master branch (continuous development)
-- **`:vX.X.X`** - Semantic version with v prefix (e.g., `:v1.0.3`)
-- **`:X.X.X`** - Semantic version without v prefix (e.g., `:1.0.3`)
+- **`:vX.X.X`** - Semantic version matching git tag (e.g., `:v1.0.3`)
 - **`:latest`** - Always points to the most recent stable release
 
 ### Release Requirements

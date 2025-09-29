@@ -136,8 +136,7 @@ purr/
    - Creates git tag (e.g., `v1.0.3`)
    - Pushes commit and tag to GitHub
    - GitHub Actions builds and publishes Docker images with tags:
-     - `purrito:v1.0.3` (with v prefix)
-     - `purrito:1.0.3` (without v prefix)
+     - `purrito:v1.0.3` (matches git tag)
      - `purrito:latest`
 
 **Note**: The release script automatically validates that:
@@ -149,8 +148,7 @@ purr/
 ### Docker Image Tags
 
 - **`:dev`** - Built on every push to master (continuous development)
-- **`:vX.X.X`** - Semantic version with v prefix (e.g., `:v1.0.3`)
-- **`:X.X.X`** - Semantic version without v prefix (e.g., `:1.0.3`)
+- **`:vX.X.X`** - Semantic version matching git tag (e.g., `:v1.0.3`)
 - **`:latest`** - Always points to the most recent release
 
 ## Important Notes
