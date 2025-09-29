@@ -8,8 +8,12 @@ COPY ./package-lock.json ./package.json ./
 COPY ./backend/package.json ./backend/package.json
 COPY ./client/package.json ./client/package.json
 
-# Install dependencies
-RUN npm ci
+# Install dependencies - handle npm optional deps bug (npm/cli#4828)
+# Force inclusion of all optional dependencies for ARM64 musl
+RUN npm ci --include=optional || \
+    (echo "npm ci failed with optional deps, trying fallback..." && \
+     rm -rf node_modules package-lock.json && \
+     npm install)
 
 # Copy the rest of the monorepo
 COPY ./ .
@@ -17,8 +21,14 @@ COPY ./ .
 # Build the backend (schema.gql not needed for runtime)
 RUN npm -w backend run build
 
-# Build the client (Vite)
-RUN npm -w client run build
+# Fix missing Rollup ARM64 musl binary (npm optional deps bug)
+RUN set -ex && \
+    echo "Installing missing Rollup ARM64 binary..." && \
+    npm install --no-save @rollup/rollup-linux-arm64-musl@4.13.0 && \
+    echo "Verifying Rollup installation..." && \
+    ls node_modules/@rollup/ && \
+    echo "Building client with Vite..." && \
+    npm -w client run build
 
 
 # Stage 2: Create final image

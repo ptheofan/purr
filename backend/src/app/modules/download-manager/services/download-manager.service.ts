@@ -368,8 +368,6 @@ export class DownloadManagerService {
         if (currentSmallCount < this.concurrentSmallFiles) {
           result.push(item);
           currentSmallCount++;
-        } else {
-          break;
         }
       }
 
@@ -378,13 +376,11 @@ export class DownloadManagerService {
         if (currentLargeCount < this.concurrentLargeFiles) {
           result.push(item);
           currentLargeCount++;
-        } else {
-          break;
         }
       }
 
       // Stop if both limits are reached
-      if (currentSmallCount >= this.concurrentSmallFiles && 
+      if (currentSmallCount >= this.concurrentSmallFiles &&
           currentLargeCount >= this.concurrentLargeFiles) {
         break;
       }
