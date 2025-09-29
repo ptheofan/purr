@@ -203,11 +203,27 @@ export class DownloadManagerService {
     await this.itemsRepo.addMany(uniqueItems);
 
     // Asynchronously check if items already exist on disk and verify their integrity
-    const analysisCompletedPromise = new Promise<void>((resolve) => {
-      this.checkGroupItemsOnDisk(group.id).then(async ({ groupId }) => {
-        await this.updateGroupState(groupId, GroupState.Ready);
-        resolve();
-      });
+    const analysisCompletedPromise = new Promise<void>((resolve, reject) => {
+      this.checkGroupItemsOnDisk(group.id)
+        .then(async ({ groupId }) => {
+          try {
+            await this.updateGroupState(groupId, GroupState.Ready);
+            resolve();
+          } catch (error) {
+            this.logger.error(`Failed to update group state for group ${groupId} after disk analysis:`, error);
+            reject(error);
+          }
+        })
+        .catch((error) => {
+          this.logger.error(`Failed to analyze items on disk for group ${group.id}:`, error);
+          // Set group state to Ready despite analysis failure to allow downloads to proceed
+          this.updateGroupState(group.id, GroupState.Ready)
+            .then(() => resolve())
+            .catch((stateError) => {
+              this.logger.error(`Failed to set fallback group state for group ${group.id}:`, stateError);
+              reject(stateError);
+            });
+        });
     });
 
     // Mark group as ready for download
@@ -462,21 +478,21 @@ export class DownloadManagerService {
         .then(async () => {
           this.activeDownloaders.delete(item.id);
           await this.updateItemStatus(item.id, DownloadStatus.Completed);
-          this.logger.debug(`Download ${item.name} completed, calling START again.`);
-          await this.start();
+          this.logger.debug(`Download ${item.name} completed, scheduling START again.`);
+          setImmediate(() => this.start());
         })
         .catch(async (error) => {
           this.activeDownloaders.delete(item.id);
           await this.setItemError(item.id, error.error_message);
           this.logger.error(`Download ${item.name} failed! ${error.error_message}`, error.stack);
-          this.logger.debug(`Download ${item.name} failed, calling START again.`);
-          await this.start();
+          this.logger.debug(`Download ${item.name} failed, scheduling START again.`);
+          setImmediate(() => this.start());
         });
     } catch (error) {
       this.logger.error(`Failed to create downloader for ${item.name}`, error);
       await this.setItemError(item.id, error instanceof Error ? error.message : String(error));
-      this.logger.debug(`Download ${item.name} failed, calling START again.`);
-      await this.start();
+      this.logger.debug(`Download ${item.name} failed, scheduling START again.`);
+      setImmediate(() => this.start());
     }
   }
 

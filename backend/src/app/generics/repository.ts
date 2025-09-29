@@ -1,3 +1,4 @@
+import { Mutex } from 'async-mutex';
 import { Predicate } from './repository.types';
 
 export abstract class Repository<T, K extends keyof T> {
@@ -22,31 +23,22 @@ export abstract class Repository<T, K extends keyof T> {
 
   /**
    * The mutex lock for protecting repository operations.
-   * This is used when withLock is true to prevent concurrent access.
+   * This is used when isThreadSafe is true to prevent concurrent access.
    */
-  private lock: Promise<void> = Promise.resolve();
+  private readonly mutex = new Mutex();
 
   /**
    * Acquires a lock for repository operations.
-   * This method ensures that operations are serialized when withLock is true.
+   * This method ensures that operations are serialized when isThreadSafe is true.
    * @param operation The operation to execute with the lock
    * @returns The result of the operation
    */
-  protected async withLock<TResult>(operation: () => TResult): Promise<TResult> {
+  protected async withLock<TResult>(operation: () => TResult | Promise<TResult>): Promise<TResult> {
     if (!this.isThreadSafe) {
       return operation();
     }
 
-    return new Promise<TResult>((resolve, reject) => {
-      this.lock = this.lock.then(async () => {
-        try {
-          const result = operation();
-          resolve(result);
-        } catch (error) {
-          reject(error);
-        }
-      }).catch(reject);
-    });
+    return this.mutex.runExclusive(operation);
   }
 
   /**
