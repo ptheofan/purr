@@ -9,7 +9,6 @@ import * as os from 'os';
 
 describe('Partial Suffix Integration', () => {
   let downloadFactory: DownloadFactory;
-  let eventEmitter: EventEmitter2;
   let tempDir: string;
 
   beforeEach(async () => {
@@ -21,7 +20,6 @@ describe('Partial Suffix Integration', () => {
     }).compile();
 
     downloadFactory = module.get<DownloadFactory>(DownloadFactory);
-    eventEmitter = module.get<EventEmitter2>(EventEmitter2);
 
     // Create a temporary directory for test files
     tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'purr-partial-test-'));
