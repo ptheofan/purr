@@ -1,0 +1,26 @@
+services:
+  purr:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: purr-local:dev
+    container_name: purr-local
+    hostname: purr-local
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    environment:
+      # Override any specific values for testing
+      NODE_ENV: production
+      # User/Group settings for the container, used by the entrypoint.sh script
+      # If you need to change these, you can do so by changing the values in the .env file
+      # You can find the default values in the entrypoint.sh script
+      UID: 1000
+      GID: 1000
+      USER_NAME: node
+      GROUP_NAME: node
+    volumes:
+      # Map your folders here as you need them
+      - ./test-data:./test-data
+    restart: unless-stopped

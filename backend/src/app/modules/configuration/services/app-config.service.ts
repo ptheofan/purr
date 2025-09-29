@@ -71,7 +71,7 @@ const configSchema = z.object({
   downloaderPerformanceMonitoringSpeed: z.number().default(0),
   downloaderArbitraryDownloadsEnabled: z.boolean().default(false),
   downloaderArbitraryDownloadsRootFolder: z.string().default('/mnt'),
-  consoleLogLevels: z.array(z.enum(['log', 'warn', 'error', 'debug', 'verbose'])).default(['log', 'warn', 'error']),
+  consoleLogLevels: z.array(z.string()).default(['log', 'warn', 'error']),
 }).superRefine((data, ctx) => {
   // Validate that arbitrary downloads root folder exists when enabled
   if (data.downloaderArbitraryDownloadsEnabled) {
@@ -167,8 +167,27 @@ export class AppConfigService {
       downloaderPerformanceMonitoringSpeed: this.loadEnvInt(EnvKeys.DOWNLOADER_PERFORMANCE_MONITORING_SPEED, 0),
       downloaderArbitraryDownloadsEnabled: this.loadEnvBoolean(EnvKeys.DOWNLOADER_ARBITRARY_DOWNLOADS_ENABLED, false),
       downloaderArbitraryDownloadsRootFolder: this.loadEnvString(EnvKeys.DOWNLOADER_ARBITRARY_DOWNLOADS_ROOT_FOLDER, '/mnt'),
-      consoleLogLevels: this.loadEnvArray(EnvKeys.CONSOLE_LOG_LEVELS, ['log', 'warn', 'error']) as ('log' | 'warn' | 'error' | 'debug' | 'verbose')[],
+      consoleLogLevels: this.filterValidLogLevels(
+        this.loadEnvArray(EnvKeys.CONSOLE_LOG_LEVELS, ['log', 'warn', 'error'])
+      ),
     };
+  }
+
+  private filterValidLogLevels(levels: string[]): ('log' | 'warn' | 'error' | 'debug' | 'verbose')[] {
+    const validLevels = ['log', 'warn', 'error', 'debug', 'verbose'];
+    const filtered = levels.filter(level => validLevels.includes(level));
+
+    // Warn about invalid levels
+    const invalidLevels = levels.filter(level => !validLevels.includes(level));
+    if (invalidLevels.length > 0) {
+      this.logger.warn(`⚠️  Ignoring invalid log levels: ${invalidLevels.join(', ')}`);
+      this.logger.warn(`   Valid levels are: ${validLevels.join(', ')}`);
+    }
+
+    // Return filtered levels or default if none are valid
+    return filtered.length > 0
+      ? filtered as ('log' | 'warn' | 'error' | 'debug' | 'verbose')[]
+      : ['log', 'warn', 'error'];
   }
 
   private loadEnvInt(name: string, defaultValue?: number): number | undefined {

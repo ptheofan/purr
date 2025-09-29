@@ -53,7 +53,10 @@
       "Bash(npx ts-node:*)",
       "Bash(timeout 10s npx ts-node src/generate-schema.ts)",
       "Bash(git check-ignore:*)",
-      "Bash(docker build:*)"
+      "Bash(docker build:*)",
+      "Bash(docker-compose build:*)",
+      "Bash(docker-compose up:*)",
+      "Bash(docker-compose:*)"
     ],
     "deny": [],
     "ask": []
