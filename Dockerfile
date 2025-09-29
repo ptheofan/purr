@@ -47,5 +47,5 @@ ARG PORT=3000
 ENV PORT=${PORT}
 EXPOSE ${PORT}
 
-# Use entrypoint with correct path
-CMD ["./entrypoint.sh", "node", "backend/dist/main"]
+# Use entrypoint with correct path (NestJS builds to dist/src/main.js)
+CMD ["./entrypoint.sh", "node", "backend/dist/src/main"]

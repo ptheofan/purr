@@ -52,7 +52,8 @@
       "Bash(npm -w client run lint -- --debug)",
       "Bash(npx ts-node:*)",
       "Bash(timeout 10s npx ts-node src/generate-schema.ts)",
-      "Bash(git check-ignore:*)"
+      "Bash(git check-ignore:*)",
+      "Bash(docker build:*)"
     ],
     "deny": [],
     "ask": []
