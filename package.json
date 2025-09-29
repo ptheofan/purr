@@ -10,8 +10,8 @@
         "backend": "npm -w backend run start:dev",
         "backend:debug": "npm -w backend run start:debug",
         "client": "npm -w client run dev",
-        "codegen": "npm run -w client codegen",
-        "codegen:watch": "npm run -w client codegen:watch"
+        "build": "npm -w backend run build && npm -w client run build",
+        "lint": "npm -w backend run lint --if-present && npm -w client run lint --if-present"
     },
     "dependencies": {
         "graphql-scalars": "^1.24.1",

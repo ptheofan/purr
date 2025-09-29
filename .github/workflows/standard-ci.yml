@@ -76,11 +76,15 @@ jobs:
           cache: 'npm'
       - run: npm ci
 
+      # Generate GraphQL schema
+      - name: Generate GraphQL schema
+        run: npm -w backend run generate-schema
+
       # Build backend
       - name: Build backend
         run: npm -w backend run build
 
-      # Build client (no longer needs backend server)
+      # Build client
       - name: Build client
         run: npm -w client run build
 
