@@ -1,10 +1,9 @@
 import { MockedResponse } from '@apollo/client/testing';
-import { 
-  GET_GROUPS, 
-  GET_GROUP, 
-  GET_ITEMS, 
+import {
+  GET_GROUPS,
+  GET_GROUP,
+  GET_ITEMS,
   GET_ITEM,
-  CREATE_DOWNLOAD_FROM_PUTIO,
   DOWNLOAD_MANAGER_STATS_SUBSCRIPTION,
   GROUP_ADDED_SUBSCRIPTION,
   GROUP_STATE_CHANGED_SUBSCRIPTION,
@@ -12,6 +11,7 @@ import {
   ITEM_STATUS_CHANGED_SUBSCRIPTION,
   ITEM_STATS_UPDATED_SUBSCRIPTION
 } from './apollo.graphql';
+import { CREATE_DOWNLOAD_FROM_PUTIO } from '../scenes/downloads/index.graphql';
 import { 
   mockGroups, 
   mockDownloadManagerStats, 

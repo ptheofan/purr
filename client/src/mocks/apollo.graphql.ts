@@ -81,35 +81,6 @@ export const GET_ITEM = gql`
   }
 `;
 
-// Mutations
-export const CREATE_DOWNLOAD_FROM_PUTIO = gql`
-  mutation CreateDownloadFromPutio($putioId: Int!, $saveAt: String!) {
-    createDownloadFromPutio(putioId: $putioId, saveAt: $saveAt) {
-      success
-      message
-      group {
-        id
-        name
-        saveAt
-        state
-        status
-        addedAt
-        items {
-          id
-          name
-          relativePath
-          size
-          status
-          groupId
-          crc32
-          downloadLink
-          error
-        }
-      }
-    }
-  }
-`;
-
 // Subscriptions
 export const DOWNLOAD_MANAGER_STATS_SUBSCRIPTION = gql`
   subscription DownloadManagerStats {

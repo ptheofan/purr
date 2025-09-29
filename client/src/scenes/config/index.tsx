@@ -1,7 +1,7 @@
 import { Box, List, ListItem, ListItemText, ListSubheader } from '@mui/material';
 import { useQuery } from '@apollo/client';
 import { prettyBytes, prettyTime } from '../../helpers/pretty.helper';
-import { GET_APP_CONFIG, type ConfigQueryResult } from './index.graphql';
+import { GET_APP_CONFIG, type ConfigQueryResult, type AppConfig } from './index.graphql';
 
 interface ConfigDisplayProps {
   maxConcurrentDownloads: number;
@@ -13,7 +13,7 @@ interface ConfigDisplayProps {
   putioToken: string;
 }
 
-const mapGraphQLToProps = (appConfig: ConfigQueryResult['appConfig']): ConfigDisplayProps => ({
+const mapGraphQLToProps = (appConfig: AppConfig): ConfigDisplayProps => ({
   maxConcurrentDownloads: appConfig.concurrentGroups,
   downloadPath: appConfig.downloaderTargets[0]?.path || 'Not configured',
   chunkSize: appConfig.downloaderChunkSize,

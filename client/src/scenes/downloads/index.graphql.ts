@@ -149,3 +149,47 @@ export interface ItemStatusChangedSubscriptionResult {
 export interface DownloadsSubscriptionResult {
   groupProgress?: Group;
 }
+
+// Mutations
+export const CREATE_DOWNLOAD_FROM_PUTIO = gql`
+  mutation CreateDownloadFromPutio($putioId: Int!, $saveAt: String!) {
+    createDownloadFromPutio(putioId: $putioId, saveAt: $saveAt) {
+      success
+      message
+      group {
+        id
+        name
+        saveAt
+        state
+        status
+        addedAt
+        items {
+          id
+          name
+          relativePath
+          size
+          status
+          groupId
+          crc32
+          downloadLink
+          error
+        }
+      }
+    }
+  }
+`;
+
+export interface CreatePutioDownloadResultDto {
+  success: boolean;
+  message?: string;
+  group?: Group;
+}
+
+export interface CreateDownloadFromPutioMutationResult {
+  createDownloadFromPutio: CreatePutioDownloadResultDto;
+}
+
+export interface CreateDownloadFromPutioMutationVariables {
+  putioId: number;
+  saveAt: string;
+}
