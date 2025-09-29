@@ -34,7 +34,7 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
       sortSchema: true,
       playground: false,
       plugins: [ApolloServerPluginLandingPageLocalDefault()],
-      autoSchemaFile: join(process.cwd(), 'src/schema.gql'),
+      autoSchemaFile: join(process.cwd(), 'schema.gql'),
       subscriptions: {
         'graphql-ws': true,
       },

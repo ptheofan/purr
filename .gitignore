@@ -11,7 +11,7 @@ dist-ssr
 **/dist
 *.local
 
-backend/src/schema.gql
+backend/schema.gql
 
 # Editor directories and files
 .vscode/*
@@ -47,15 +47,10 @@ coverage/
 
 /test-data
 
-# GraphQL Code Generation
-**/__generated__/
-**/__generated__/**
 
 # TypeScript build artifacts
-*.d.ts
-*.js.map
-*.tsbuildinfo
 **/*.d.ts
+!**/vite-env.d.ts
 **/*.js.map
 **/*.tsbuildinfo
 

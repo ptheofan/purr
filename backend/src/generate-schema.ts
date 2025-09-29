@@ -62,7 +62,7 @@ async function generateSchema() {
     }
 
     // Write schema to file
-    const schemaPath = join(process.cwd(), 'src/schema.gql');
+    const schemaPath = join(process.cwd(), 'schema.gql');
     writeFileSync(schemaPath, printSchema(schema));
 
     console.log('✅ GraphQL schema generated successfully at:', schemaPath);
