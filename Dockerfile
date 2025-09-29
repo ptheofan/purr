@@ -36,7 +36,8 @@ COPY --from=builder /src/backend/node_modules ./backend/node_modules
 COPY --from=builder /src/package.json ./package.json
 
 # Copy Vite built client files to where NestJS expects them
-COPY --from=builder /src/client/dist ./backend/dist/app/client
+# NestJS serves from join(__dirname, 'client') where __dirname = /src/backend/dist/src/app
+COPY --from=builder /src/client/dist ./backend/dist/src/app/client
 
 # Copy and prepare the entrypoint
 COPY ./entrypoint.sh .

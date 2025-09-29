@@ -38,15 +38,18 @@ export class DownloadManagerResolver {
       };
     }
 
-    // Validate and restrict the save path to the configured root folder
-    let finalSaveAt: string;
-    try {
-      finalSaveAt = restrictFolderToRoot(saveAt, this.appConfig.downloaderArbitraryDownloadsRootFolder);
-    } catch (e) {
-      return {
-        success: false,
-        message: e.message,
-      };
+    // Validate and restrict the save path to the configured root folder (if enabled)
+    let finalSaveAt: string = saveAt;
+
+    if (this.appConfig.downloaderArbitraryDownloadsRestrictPaths) {
+      try {
+        finalSaveAt = restrictFolderToRoot(saveAt, this.appConfig.downloaderArbitraryDownloadsRootFolder);
+      } catch (e) {
+        return {
+          success: false,
+          message: e.message,
+        };
+      }
     }
 
     // Get the volume from put.io and add it to the download manager

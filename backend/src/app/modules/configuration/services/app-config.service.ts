@@ -34,6 +34,7 @@ export const EnvKeys = {
   DOWNLOADER_PERFORMANCE_MONITORING_SPEED: 'DOWNLOADER_PERFORMANCE_MONITORING_SPEED',
   DOWNLOADER_ARBITRARY_DOWNLOADS_ENABLED: 'DOWNLOADER_ARBITRARY_DOWNLOADS_ENABLED',
   DOWNLOADER_ARBITRARY_DOWNLOADS_ROOT_FOLDER: 'DOWNLOADER_ARBITRARY_DOWNLOADS_ROOT_FOLDER',
+  DOWNLOADER_ARBITRARY_DOWNLOADS_RESTRICT_PATHS: 'DOWNLOADER_ARBITRARY_DOWNLOADS_RESTRICT_PATHS',
   CONSOLE_LOG_LEVELS: 'CONSOLE_LOG_LEVELS',
 } as const;
 
@@ -71,6 +72,7 @@ const configSchema = z.object({
   downloaderPerformanceMonitoringSpeed: z.number().default(0),
   downloaderArbitraryDownloadsEnabled: z.boolean().default(false),
   downloaderArbitraryDownloadsRootFolder: z.string().default('/mnt'),
+  downloaderArbitraryDownloadsRestrictPaths: z.boolean().default(true),
   consoleLogLevels: z.array(z.string()).default(['log', 'warn', 'error']),
 }).superRefine((data, ctx) => {
   // Validate that arbitrary downloads root folder exists when enabled
@@ -167,6 +169,7 @@ export class AppConfigService {
       downloaderPerformanceMonitoringSpeed: this.loadEnvInt(EnvKeys.DOWNLOADER_PERFORMANCE_MONITORING_SPEED, 0),
       downloaderArbitraryDownloadsEnabled: this.loadEnvBoolean(EnvKeys.DOWNLOADER_ARBITRARY_DOWNLOADS_ENABLED, false),
       downloaderArbitraryDownloadsRootFolder: this.loadEnvString(EnvKeys.DOWNLOADER_ARBITRARY_DOWNLOADS_ROOT_FOLDER, '/mnt'),
+      downloaderArbitraryDownloadsRestrictPaths: this.loadEnvBoolean(EnvKeys.DOWNLOADER_ARBITRARY_DOWNLOADS_RESTRICT_PATHS, true),
       consoleLogLevels: this.filterValidLogLevels(
         this.loadEnvArray(EnvKeys.CONSOLE_LOG_LEVELS, ['log', 'warn', 'error'])
       ),
@@ -260,6 +263,7 @@ export class AppConfigService {
     this.logger.verbose(`  - Downloader Performance Monitoring Speed: ${prettyBytes(this.downloaderPerformanceMonitoringSpeed)}`);
     this.logger.verbose(`  - Downloader Arbitrary Downloads Enabled: ${this.downloaderArbitraryDownloadsEnabled}`);
     this.logger.verbose(`  - Downloader Arbitrary Downloads Root Folder: ${this.downloaderArbitraryDownloadsRootFolder}`);
+    this.logger.verbose(`  - Downloader Arbitrary Downloads Restrict Paths: ${this.downloaderArbitraryDownloadsRestrictPaths}`);
     this.logger.verbose(`  - Console Log Levels: ${this.consoleLogLevels.join(', ')}`);
   }
 
@@ -375,5 +379,9 @@ export class AppConfigService {
 
   get downloaderArbitraryDownloadsRootFolder(): string {
     return this.config.downloaderArbitraryDownloadsRootFolder;
+  }
+
+  get downloaderArbitraryDownloadsRestrictPaths(): boolean {
+    return this.config.downloaderArbitraryDownloadsRestrictPaths;
   }
 }
