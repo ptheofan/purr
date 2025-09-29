@@ -168,7 +168,7 @@ services:
     container_name: purrito
     hostname: purrito
     environment:
-      - CONSOLE_LOG_LEVELS=log,error,warn,debug,verbose,fatal
+      - CONSOLE_LOG_LEVELS=log,error,warn,debug,verbose
       - PUID=1000
       - PGID=1000
       - HOST=http://localhost:3000

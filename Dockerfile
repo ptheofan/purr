@@ -14,10 +14,7 @@ RUN npm ci
 # Copy the rest of the monorepo
 COPY ./ .
 
-# Generate GraphQL schema
-RUN npm -w backend run generate-schema
-
-# Build the backend
+# Build the backend (schema.gql not needed for runtime)
 RUN npm -w backend run build
 
 # Build the client (Vite)
@@ -34,6 +31,9 @@ WORKDIR /src
 COPY --from=builder /src/backend/dist ./backend/dist
 COPY --from=builder /src/node_modules ./node_modules
 COPY --from=builder /src/backend/node_modules ./backend/node_modules
+
+# Copy root package.json for monorepo detection
+COPY --from=builder /src/package.json ./package.json
 
 # Copy Vite built client files to where NestJS expects them
 COPY --from=builder /src/client/dist ./backend/dist/app/client

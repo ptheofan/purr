@@ -108,11 +108,27 @@ export class AppConfigService {
     const validation = configSchema.safeParse(rawConfig);
     
     if (!validation.success) {
+      this.logger.error('❌ Configuration validation failed!');
       this.logger.warn('Please fix the following configuration errors:');
+
       (validation as any).error.issues.forEach((error: any) => {
-        this.logger.error(`  - ${error.path.join('.')}: ${error.message}`);
+        const fieldName = error.path.join('.');
+        let errorMessage = `  - ${fieldName}: ${error.message}`;
+
+        // Add helpful hints for common missing fields
+        if (fieldName === 'putioClientId') {
+          errorMessage += '\n      ℹ️  Set PUTIO_CLIENT_ID environment variable with your Put.io OAuth app ID';
+        } else if (fieldName === 'putioClientSecret') {
+          errorMessage += '\n      ℹ️  Set PUTIO_CLIENT_SECRET environment variable with your Put.io OAuth app secret';
+        } else if (fieldName === 'putioAuth') {
+          errorMessage += '\n      ℹ️  Set PUTIO_AUTH environment variable with your Put.io OAuth token';
+        }
+
+        this.logger.error(errorMessage);
       });
-      
+
+      this.logger.error('\n📚 See .env.example for configuration reference');
+
       // Don't exit during tests
       if (this.configService.get('NODE_ENV') === 'test') {
         throw new Error('Configuration validation failed');
@@ -202,9 +218,11 @@ export class AppConfigService {
     this.logger.verbose(`Configuration loaded:`);
     this.logger.verbose(`  - Port: ${this.port}`);
     this.logger.verbose(`  - Host: ${this.host}`);
+
     this.logger.verbose(`  - Put.io Client ID: ${this.putioClientId}`);
     this.logger.verbose(`  - Put.io Client Secret: ${this.putioClientSecret.slice(-4).padStart(this.putioClientSecret.length, '*')}`);
-    this.logger.verbose(`  - Put.io Auth: ${this.putioAuth.slice(-4).padStart(this.putioAuth.length, '*')}`);
+    this.logger.verbose(`  - Put.io Auth: ${this.putioAuth.slice(-4).padStart(this.putioAuth.length, '*')}`)
+
     this.logger.verbose(`  - Watcher Enabled: ${this.watcherEnabled}`);
     this.logger.verbose(`  - Watcher Targets: ${this.watcherTargets.map((t) => t.path).join(', ')}`);
     this.logger.verbose(`  - Put.io Watcher Socket: ${this.putioWatcherSocket}`);

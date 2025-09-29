@@ -76,11 +76,7 @@ jobs:
           cache: 'npm'
       - run: npm ci
 
-      # Generate GraphQL schema
-      - name: Generate GraphQL schema
-        run: npm -w backend run generate-schema
-
-      # Build backend
+      # Build backend (schema.gql not needed for runtime)
       - name: Build backend
         run: npm -w backend run build
 
