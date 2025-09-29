@@ -61,7 +61,10 @@
       "Bash(npm -w backend run test -- --testPathPattern=src/app/modules/download-manager/resolvers/download-manager.resolver.spec.ts --verbose)",
       "Bash(npm -w backend run test)",
       "Bash(npm -w backend run test -- --testPathPattern=src/app/modules/download-manager/services/download-manager.service.spec.ts --verbose)",
-      "Bash(npm -w backend run test -- --detectOpenHandles --forceExit)"
+      "Bash(npm -w backend run test -- --detectOpenHandles --forceExit)",
+      "Bash(node:*)",
+      "Bash(npm -w backend run test -- --testPathPattern=download-coordinator.spec.ts)",
+      "Bash(npm -w backend run test -- --testPathPattern=\"download-manager|downloader|repository\" --coverage=false)"
     ],
     "deny": [],
     "ask": []

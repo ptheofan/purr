@@ -91,13 +91,8 @@ export class DownloadCoordinator<T> extends EventEmitter2 implements DownloadCoo
         await this.handleNetworkStatus();
         await this.manageWorkers(fileHandle);
 
-        // Event-driven approach: wait for worker events instead of polling
-        if (this.activePromises.size > 0) {
-          await Promise.race(this.activePromises);
-        } else {
-          // Only poll if no workers are active
-          await waitFor({ sec: 0.5 });
-        }
+        // Thread-safe approach: wait for worker events without race conditions
+        await this.waitForWorkerEvents();
       }
 
       if (this.isRunning && this.isComplete()) {
@@ -143,6 +138,29 @@ export class DownloadCoordinator<T> extends EventEmitter2 implements DownloadCoo
     } finally {
       await fileHandle.close();
       await this.cleanup();
+    }
+  }
+
+  /**
+   * Thread-safe worker event waiting that eliminates race conditions
+   */
+  private async waitForWorkerEvents(): Promise<void> {
+    // Take a snapshot of active promises to prevent race conditions
+    const promiseSnapshot = new Set(this.activePromises);
+
+    if (promiseSnapshot.size > 0) {
+      try {
+        // Use the snapshot to avoid the race condition where promises
+        // could be removed between size check and Promise.race()
+        await Promise.race(promiseSnapshot);
+      } catch {
+        // Promise.race() can throw if all promises reject simultaneously
+        // In that case, we'll continue with the polling fallback
+        await waitFor({ sec: 0.1 });
+      }
+    } else {
+      // Only poll if no workers are active
+      await waitFor({ sec: 0.5 });
     }
   }
 

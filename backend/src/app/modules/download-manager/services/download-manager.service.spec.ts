@@ -340,6 +340,60 @@ describe('DownloadManagerService', () => {
       const items = await itemsRepo.getAll();
       expect(items).toEqual([]);
     });
+
+    it('should handle errors in analysisCompletedPromise and not hang indefinitely', async () => {
+      const { vol: volume } = memfs({
+        'file1.txt': JSON.stringify({ id: 1, name: 'file1.txt', size: 100, crc32: '123456', downloadLink: 'http://example.com/file1.txt' }),
+      });
+
+      // Mock itemsRepo.filter to throw an error during checkGroupItemsOnDisk
+      const filterSpy = jest.spyOn(itemsRepo, 'filter')
+        .mockImplementation(() => {
+          throw new Error('Simulated repository error during analysis');
+        });
+
+      const result = await service.addVolume(volume, '/save/here');
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.groups).toBe(1);
+        expect(result.items).toBe(1);
+      }
+
+      // The promise should eventually resolve despite the error in checkGroupItemsOnDisk
+      // This tests that our error handling prevents the promise from hanging
+      await expect(result.analysisCompletedPromise).resolves.toBeUndefined();
+
+      filterSpy.mockRestore();
+    });
+
+    it('should reject analysisCompletedPromise if both analysis and fallback fail', async () => {
+      const { vol: volume } = memfs({
+        'file1.txt': JSON.stringify({ id: 1, name: 'file1.txt', size: 100, crc32: '123456', downloadLink: 'http://example.com/file1.txt' }),
+      });
+
+      // Mock itemsRepo.filter to throw an error during checkGroupItemsOnDisk
+      const filterSpy = jest.spyOn(itemsRepo, 'filter')
+        .mockImplementation(() => {
+          throw new Error('Simulated repository error during analysis');
+        });
+
+      // Mock groupsRepo.update to fail during the fallback updateGroupState
+      const updateSpy = jest.spyOn(groupsRepo, 'update')
+        .mockRejectedValue(new Error('Simulated repository error'));
+
+      const result = await service.addVolume(volume, '/save/here');
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.groups).toBe(1);
+        expect(result.items).toBe(1);
+      }
+
+      // The promise should reject when both the analysis and fallback fail
+      await expect(result.analysisCompletedPromise).rejects.toThrow('Simulated repository error');
+
+      filterSpy.mockRestore();
+      updateSpy.mockRestore();
+    });
   });
 
   describe('groupExists', () => {
