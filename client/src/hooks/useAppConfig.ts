@@ -1,5 +1,5 @@
 import { useQuery } from '@apollo/client';
-import { GET_APP_CONFIG, GET_APP_CONFIG_BASIC } from '../queries';
+import { GET_APP_CONFIG, GET_APP_CONFIG_BASIC } from './useAppConfig.graphql';
 
 // Hook for fetching complete app configuration
 export const useAppConfig = () => {

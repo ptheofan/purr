@@ -67,7 +67,7 @@ Alternative methods:
 
 // Make mockUtils available globally in development
 if (import.meta.env.DEV) {
-  (window as any).mockUtils = mockUtils;
+  (window as unknown as { mockUtils: typeof mockUtils }).mockUtils = mockUtils;
   console.log('🔧 Mock utilities available as window.mockUtils');
   console.log('🔧 Type mockUtils.help() for available commands');
 }

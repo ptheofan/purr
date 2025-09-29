@@ -1,9 +1,14 @@
 import { Card, CardContent, Typography } from '@mui/material';
-import { DownloadManagerStatsFragment } from '../../../__generated__/graphql';
 import { prettyBytes } from '../../../helpers/pretty.helper';
 
+interface DownloadManagerStatsData {
+  lifetimeBytes: string;
+  speed: string;
+  startedAt: string;
+}
+
 interface DownloadManagerStatsProps {
-  stats: DownloadManagerStatsFragment;
+  stats: DownloadManagerStatsData;
 }
 
 const DownloadManagerStats = ({ stats }: DownloadManagerStatsProps) => {

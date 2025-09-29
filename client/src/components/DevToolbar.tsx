@@ -17,11 +17,10 @@ import {
   ToggleOff as ToggleOffIcon,
   Refresh as RefreshIcon
 } from '@mui/icons-material';
-import { 
-  isMockEnabled, 
-  getMockStatus, 
-  toggleMockData, 
-  getMockConfig 
+import {
+  getMockStatus,
+  toggleMockData,
+  getMockConfig
 } from '../config/mock';
 import { tokens } from '../../theme';
 
@@ -130,9 +129,9 @@ export const DevToolbar: React.FC = () => {
             mt: 1,
             p: 2,
             width: '100%',
-            backgroundColor: theme.palette.mode === 'dark' 
-              ? colors.primary[500] 
-              : colors.primary[50],
+            backgroundColor: theme.palette.mode === 'dark'
+              ? colors.primary[500]
+              : colors.primary[100],
             border: '1px solid',
             borderColor: theme.palette.mode === 'dark' 
               ? colors.grey[600] 

@@ -1,6 +1,6 @@
-import { gql } from '../__generated__';
+import { gql } from '@apollo/client';
 
-export const AppConfigBasicFragment = gql(`
+export const AppConfigBasicFragment = gql`
   fragment AppConfigBasic on AppConfig {
     concurrentGroups
     concurrentLargeFiles
@@ -10,9 +10,9 @@ export const AppConfigBasicFragment = gql(`
     host
     port
   }
-`);
+`;
 
-export const AppConfigAdvancedFragment = gql(`
+export const AppConfigAdvancedFragment = gql`
   fragment AppConfigAdvanced on AppConfig {
     downloaderPerformanceMonitoringEnabled
     downloaderPerformanceMonitoringSpeed
@@ -20,9 +20,9 @@ export const AppConfigAdvancedFragment = gql(`
     uiProgressUpdateInterval
     watcherEnabled
   }
-`);
+`;
 
-export const AppConfigPutioFragment = gql(`
+export const AppConfigPutioFragment = gql`
   fragment AppConfigPutio on AppConfig {
     putioAuth
     putioCheckAtStartup
@@ -32,9 +32,9 @@ export const AppConfigPutioFragment = gql(`
     putioWatcherSocket
     putioWebhooksEnabled
   }
-`);
+`;
 
-export const AppConfigTargetsFragment = gql(`
+export const AppConfigTargetsFragment = gql`
   fragment AppConfigTargets on AppConfig {
     downloaderTargets {
       path
@@ -47,4 +47,4 @@ export const AppConfigTargetsFragment = gql(`
       targetPath
     }
   }
-`);
+`;

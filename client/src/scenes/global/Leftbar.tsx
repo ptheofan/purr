@@ -162,6 +162,7 @@ export const LeftbarProvider = ({ children }: LeftbarProviderProps) => {
 };
 
 type TSetCollapsed = (value: boolean) => void;
+// eslint-disable-next-line react-refresh/only-export-components
 export const useLeftbar = (): [boolean, TSetCollapsed] => {
   const { isCollapsed, setCollapsed } = useContext(LeftbarStateContext);
   return [isCollapsed, setCollapsed];

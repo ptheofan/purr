@@ -52,7 +52,7 @@ export const ToastProvider: React.FC<ToastProviderProps> = ({ children }) => {
     showToast(message, 'warning');
   }, [showToast]);
 
-  const handleClose = useCallback((event?: React.SyntheticEvent | Event, reason?: string) => {
+  const handleClose = useCallback((_event?: React.SyntheticEvent | Event, reason?: string) => {
     if (reason === 'clickaway') {
       return;
     }
@@ -113,6 +113,7 @@ export const ToastProvider: React.FC<ToastProviderProps> = ({ children }) => {
   );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useToast = (): ToastContextType => {
   const context = useContext(ToastContext);
   if (context === undefined) {

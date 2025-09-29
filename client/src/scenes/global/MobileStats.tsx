@@ -1,19 +1,17 @@
 import { Box, Typography, useTheme } from '@mui/material';
 import { useSubscription } from '@apollo/client';
-import { DOWNLOAD_MANAGER_STATS_SUBSCRIPTION } from '../../queries';
-import { getFragmentData } from '../../__generated__';
-import { DownloadManagerStatsFragment } from '../../fragments';
+import { DOWNLOAD_MANAGER_STATS_SUBSCRIPTION, type DownloadManagerStatsSubscriptionResult } from './MobileStats.graphql';
 import { prettyBytes, prettyUptime } from '../../helpers/pretty.helper';
 import { tokens } from '../../../theme.ts';
 
 const MobileStats = () => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
-  const { data: statsData } = useSubscription(DOWNLOAD_MANAGER_STATS_SUBSCRIPTION);
+  const { data: statsData } = useSubscription<DownloadManagerStatsSubscriptionResult>(DOWNLOAD_MANAGER_STATS_SUBSCRIPTION);
 
   if (!statsData) return null;
 
-  const stats = getFragmentData(DownloadManagerStatsFragment, statsData.downloadManagerStats);
+  const stats = statsData.downloadManagerStats;
 
   return (
     <Box 

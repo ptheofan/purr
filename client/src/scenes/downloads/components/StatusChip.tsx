@@ -1,12 +1,15 @@
-import { GroupBasicInfoFragment } from "../../../__generated__/graphql";
-import { ChipProps } from "@mui/material";
+import { ChipProps, Chip } from "@mui/material";
 import DoneIcon from '@mui/icons-material/Done';
-import { Chip } from "@mui/material";
 
-const StatusChip = (group: GroupBasicInfoFragment) => {
-    const value = group.state && group.state !== 'Ready' ? group.state : group.status;
+interface StatusChipProps {
+    status: string;
+    state: string;
+}
+
+const StatusChip = ({ status, state }: StatusChipProps) => {
+    const value = state && state !== 'Ready' ? state : status;
     let finalProps: ChipProps;
-    let label: string = value
+    const label: string = value
 
     switch (value) {
         case 'Initializing':  // From state

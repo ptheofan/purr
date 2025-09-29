@@ -17,35 +17,7 @@ COPY ./ .
 # First build the backend
 RUN npm -w backend run build
 
-# Install curl for health checks
-RUN apk add --no-cache curl
-
-# Start backend, generate GraphQL types, then stop
-RUN NODE_ENV=production \
-    PUTIO_CLIENT_ID=1234 \
-    PUTIO_CLIENT_SECRET=dummy_secret \
-    PUTIO_AUTH=dummy_auth \
-    WATCHER_ENABLED=false \
-    DOWNLOADER_ENABLED=false \
-    PUTIO_ENABLE_SOCKET=false \
-    PUTIO_CHECK_AT_STARTUP=false \
-    npm run backend & \
-    BACKEND_PID=$! && \
-    echo "Waiting for backend server to start..." && \
-    for i in $(seq 1 60); do \
-        if curl -s -X POST \
-            -H "Content-Type: application/json" \
-            -d '{"query":"query { appConfig { version } }"}' \
-            http://localhost:3000/graphql | grep -q "version"; then \
-            echo "GraphQL endpoint is ready and responding"; \
-            break; \
-        fi; \
-        echo "Waiting for GraphQL endpoint... ($i/60)"; \
-        sleep 2; \
-    done && \
-    npm run codegen && \
-    kill $BACKEND_PID || true && \
-    sleep 2
+# No longer need to generate GraphQL types - using hand-written types
 
 # Build the client (Vite)
 RUN npm -w client run build

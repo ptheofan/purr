@@ -11,7 +11,7 @@ import {
   GROUP_STATUS_CHANGED_SUBSCRIPTION,
   ITEM_STATUS_CHANGED_SUBSCRIPTION,
   ITEM_STATS_UPDATED_SUBSCRIPTION
-} from '../queries';
+} from './apollo.graphql';
 import { 
   mockGroups, 
   mockDownloadManagerStats, 

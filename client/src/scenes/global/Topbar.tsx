@@ -7,9 +7,7 @@ import DarkModeOutlinedIcon from '@mui/icons-material/DarkModeOutlined';
 import MenuOutlinedIcon from '@mui/icons-material/MenuOutlined';
 import { useLeftbar } from './Leftbar.tsx';
 import { useSubscription } from '@apollo/client';
-import { DOWNLOAD_MANAGER_STATS_SUBSCRIPTION } from '../../queries';
-import { getFragmentData } from '../../__generated__';
-import { DownloadManagerStatsFragment } from '../../fragments';
+import { DOWNLOAD_MANAGER_STATS_SUBSCRIPTION, type DownloadManagerStatsSubscriptionResult } from './Topbar.graphql';
 import { prettyBytes, prettyUptime } from '../../helpers/pretty.helper';
 
 const Topbar = () => {
@@ -17,7 +15,7 @@ const Topbar = () => {
   const colors = tokens(theme.palette.mode);
   const colorMode = useContext(ColorModeContext);
   const [isCollapsed, setCollapsed] = useLeftbar();
-  const { data: statsData } = useSubscription(DOWNLOAD_MANAGER_STATS_SUBSCRIPTION);
+  const { data: statsData } = useSubscription<DownloadManagerStatsSubscriptionResult>(DOWNLOAD_MANAGER_STATS_SUBSCRIPTION);
 
   console.log(theme.palette.mode, colors.primary[900]);
   return (
@@ -33,22 +31,19 @@ const Topbar = () => {
         </IconButton>
         
         {/* Download Manager Stats - Hidden on mobile */}
-        {statsData && (() => {
-          const stats = getFragmentData(DownloadManagerStatsFragment, statsData.downloadManagerStats);
-          return (
-            <Box sx={{ display: { xs: 'none', md: 'flex' }, gap: 3, alignItems: 'center' }}>
-              <Typography variant="body2" sx={{ color: colors.grey[100] }}>
-                Speed: {prettyBytes(Number(stats.speed))}/s
-              </Typography>
-              <Typography variant="body2" sx={{ color: colors.grey[100] }}>
-                Total: {prettyBytes(parseInt(stats.lifetimeBytes))}
-              </Typography>
-              <Typography variant="body2" sx={{ color: colors.grey[100] }}>
-                Uptime: {prettyUptime(stats.startedAt, false)}
-              </Typography>
-            </Box>
-          );
-        })()}
+        {statsData && (
+          <Box sx={{ display: { xs: 'none', md: 'flex' }, gap: 3, alignItems: 'center' }}>
+            <Typography variant="body2" sx={{ color: colors.grey[100] }}>
+              Speed: {prettyBytes(Number(statsData.downloadManagerStats.speed))}/s
+            </Typography>
+            <Typography variant="body2" sx={{ color: colors.grey[100] }}>
+              Total: {prettyBytes(parseInt(statsData.downloadManagerStats.lifetimeBytes))}
+            </Typography>
+            <Typography variant="body2" sx={{ color: colors.grey[100] }}>
+              Uptime: {prettyUptime(statsData.downloadManagerStats.startedAt, false)}
+            </Typography>
+          </Box>
+        )}
       </Box>
 
       {/* Right Side - Search and Theme Toggle */ }

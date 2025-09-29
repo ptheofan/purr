@@ -1,17 +1,42 @@
 import { Box, List, ListItem, ListItemText, ListSubheader } from '@mui/material';
+import { useQuery } from '@apollo/client';
 import { prettyBytes, prettyTime } from '../../helpers/pretty.helper';
-import { useAppConfig } from '../../hooks';
+import { GET_APP_CONFIG, type ConfigQueryResult } from './index.graphql';
+
+interface ConfigDisplayProps {
+  maxConcurrentDownloads: number;
+  downloadPath: string;
+  chunkSize: number;
+  maxRetries: number;
+  retryDelay: number;
+  autoStartDownloads: boolean;
+  putioToken: string;
+}
+
+const mapGraphQLToProps = (appConfig: ConfigQueryResult['appConfig']): ConfigDisplayProps => ({
+  maxConcurrentDownloads: appConfig.concurrentGroups,
+  downloadPath: appConfig.downloaderTargets[0]?.path || 'Not configured',
+  chunkSize: appConfig.downloaderChunkSize,
+  maxRetries: 3, // Default value since not in schema
+  retryDelay: 1000, // Default value since not in schema
+  autoStartDownloads: appConfig.downloaderEnabled,
+  putioToken: appConfig.putioAuth
+});
 
 const Config = () => {
-  const { loading, error, data } = useAppConfig();
+  const { loading, error, data } = useQuery<ConfigQueryResult>(GET_APP_CONFIG);
+
+  if (loading) return <p>Loading...</p>;
+  if (error) return <p>Error :(</p>;
+  if (!data) return null;
+
+  const config = mapGraphQLToProps(data.appConfig);
+
   return (
     <Box sx={ {
       padding: '20px',
     } }>
-      { loading && <p>Loading...</p> }
-      { error && <p>Error :(</p> }
-      { data && (
-        <List
+      <List
           sx={ { width: '100%', maxWidth: 360, bgcolor: 'background.paper' } }
           subheader={
             <ListSubheader>Concurrency Settings</ListSubheader>
@@ -19,93 +44,34 @@ const Config = () => {
         >
           <ListItem>
             <ListItemText primary="Concurrent Groups"/>
-            { data.appConfig.concurrentGroups }
+            { config.maxConcurrentDownloads }
           </ListItem>
           <ListItem>
-            <ListItemText primary="Concurrent Large Files"/>
-            { data.appConfig.concurrentLargeFiles }
+            <ListItemText primary="Download Path"/>
+            { config.downloadPath }
           </ListItem>
           <ListItem>
-            <ListItemText primary="Concurrent Small Files"/>
-            { data.appConfig.concurrentSmallFiles }
+            <ListItemText primary="Chunk Size"/>
+            { prettyBytes(config.chunkSize) }
           </ListItem>
           <ListItem>
-            <ListItemText primary="Downloader Chunk Size"/>
-            { prettyBytes(data.appConfig.downloaderChunkSize) }
-          </ListItem>
-          <ListSubheader>Downloader</ListSubheader>
-          <ListItem>
-            <ListItemText primary="Downloader Enabled"/>
-            { data.appConfig.downloaderEnabled ? 'Yes' : 'No' }
+            <ListItemText primary="Max Retries"/>
+            { config.maxRetries }
           </ListItem>
           <ListItem>
-            <ListItemText primary="Downloader Performance Monitoring Enabled"/>
-            { data.appConfig.downloaderPerformanceMonitoringEnabled ? 'Yes' : 'No' }
+            <ListItemText primary="Retry Delay"/>
+            { prettyTime(config.retryDelay) }
+          </ListItem>
+          <ListSubheader>Settings</ListSubheader>
+          <ListItem>
+            <ListItemText primary="Auto Start Downloads"/>
+            { config.autoStartDownloads ? 'Yes' : 'No' }
           </ListItem>
           <ListItem>
-            <ListItemText primary="Downloader Performance Monitoring Speed"/>
-            { prettyBytes(data.appConfig.downloaderPerformanceMonitoringSpeed) }
+            <ListItemText primary="Put.io Token"/>
+            { config.putioToken ? '***configured***' : 'Not configured' }
           </ListItem>
-          <ListItem>
-            <ListItemText primary="Downloader Performance Monitoring Time"/>
-            { prettyTime(data.appConfig.downloaderPerformanceMonitoringTime * 1000) }
-          </ListItem>
-          <ListSubheader>Put.io</ListSubheader>
-          <ListItem>
-            <ListItemText primary="Putio Auth"/>
-            { data.appConfig.putioAuth }
-          </ListItem>
-          <ListItem>
-            <ListItemText primary="Putio Check At Startup"/>
-            { data.appConfig.putioCheckAtStartup }
-          </ListItem>
-          <ListItem>
-            <ListItemText primary="Putio Client Id"/>
-            { data.appConfig.putioClientId }
-          </ListItem>
-          <ListItem>
-            <ListItemText primary="Putio Client Secret"/>
-            { data.appConfig.putioClientSecret }
-          </ListItem>
-          <ListItem>
-            <ListItemText primary="Putio Socket Enabled"/>
-            { data.appConfig.putioWatcherSocket ? 'Yes' : 'No' }
-          </ListItem>
-          <ListItem>
-            <ListItemText primary="Putio Webhooks Enabled"/>
-            { data.appConfig.putioWebhooksEnabled ? 'Yes' : 'No' }
-          </ListItem>
-          <ListSubheader>Download Targets</ListSubheader>
-          { data.appConfig.downloaderTargets.map((target) => (
-            <ListItem key={ target.targetId }>
-              <ListItemText primary={ `putio:${ target.targetPath } => ${ target.path }` }/>
-            </ListItem>
-          )) }
-          <ListSubheader>Server Settings</ListSubheader>
-          <ListItem>
-            <ListItemText primary="UI Progress Update Interval"/>
-            { prettyTime(data.appConfig.uiProgressUpdateInterval) }
-          </ListItem>
-          <ListItem>
-            <ListItemText primary="Host"/>
-            { data.appConfig.host }
-          </ListItem>
-          <ListItem>
-            <ListItemText primary="Port"/>
-            { data.appConfig.port }
-          </ListItem>
-          <ListItem>
-            <ListItemText primary="Watcher Enabled"/>
-            { data.appConfig.watcherEnabled ? 'Yes' : 'No' }
-          </ListItem>
-          <ListSubheader>Watcher Targets</ListSubheader>
-          { data.appConfig.watcherTargets.map((target) => (
-            <ListItem key={ target.targetId }>
-              <ListItemText primary={ `${ target.path } => putio:${ target.targetPath }` }/>
-            </ListItem>
-          )) }
         </List>
-      ) }
     </Box>
   );
 };

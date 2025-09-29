@@ -1,6 +1,6 @@
-import { gql } from '../__generated__';
+import { gql } from '@apollo/client';
 
-export const DownloadManagerStatsFragment = gql(`
+export const DownloadManagerStatsFragment = gql`
   fragment DownloadManagerStats on DownloadManagerStatsDto {
     lifetimeBytes
     speed
@@ -12,9 +12,9 @@ export const DownloadManagerStatsFragment = gql(`
       values
     }
   }
-`);
+`;
 
-export const ItemStatsFragment = gql(`
+export const ItemStatsFragment = gql`
   fragment ItemStats on ItemStatsDto {
     itemId
     downloadedBytes
@@ -39,4 +39,4 @@ export const ItemStatsFragment = gql(`
       speed
     }
   }
-`);
+`;

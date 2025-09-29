@@ -41,7 +41,18 @@
       "Bash(CI=true npm run codegen)",
       "Bash(npm -w client run build)",
       "Bash(npm -w backend run generate-schema)",
-      "Read(//Users/pt/.Trash/**)"
+      "Read(//Users/pt/.Trash/**)",
+      "WebFetch(domain:docs.nestjs.com)",
+      "Bash(npm -w backend run build)",
+      "Bash(npm -w client run lint)",
+      "Bash(npx eslint:*)",
+      "Bash(cat:*)",
+      "Read(//Users/pt/work/**)",
+      "Bash(git checkout:*)",
+      "Bash(npm -w client run lint -- --debug)",
+      "Bash(npx ts-node:*)",
+      "Bash(timeout 10s npx ts-node src/generate-schema.ts)",
+      "Bash(git check-ignore:*)"
     ],
     "deny": [],
     "ask": []

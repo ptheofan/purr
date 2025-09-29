@@ -5,8 +5,8 @@ interface DownloadItem {
   id: number;
   name: string;
   relativePath: string;
-  size: any;
-  status: any;
+  size: string;
+  status: string;
   error?: string | null;
 }
 

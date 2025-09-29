@@ -6,8 +6,8 @@ interface DownloadItem {
   id: number;
   name: string;
   relativePath: string;
-  size: any;
-  status: any;
+  size: string;
+  status: string;
   error?: string | null;
 }
 
@@ -40,7 +40,7 @@ const DownloadItemDisplay = ({
       )}
       {showStatus && (
         <Typography variant="body2" component="div">
-          Status: <StatusChip status={item.status} state='Ready' id={item.id} name={item.name} addedAt={null} saveAt="" />
+          Status: <StatusChip status={item.status} state="Ready" />
         </Typography>
       )}
       {showError && item.error && (

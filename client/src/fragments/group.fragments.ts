@@ -1,6 +1,6 @@
-import { gql } from '../__generated__';
+import { gql } from '@apollo/client';
 
-export const GroupBasicInfoFragment = gql(`
+export const GroupBasicInfoFragment = gql`
   fragment GroupBasicInfo on Group {
     id
     name
@@ -9,9 +9,9 @@ export const GroupBasicInfoFragment = gql(`
     addedAt
     saveAt
   }
-`);
+`;
 
-export const GroupWithItemsFragment = gql(`
+export const GroupWithItemsFragment = gql`
   fragment GroupWithItems on Group {
     ...GroupBasicInfo
     items {
@@ -23,9 +23,9 @@ export const GroupWithItemsFragment = gql(`
       error
     }
   }
-`);
+`;
 
-export const ItemBasicInfoFragment = gql(`
+export const ItemBasicInfoFragment = gql`
   fragment ItemBasicInfo on Item {
     id
     name
@@ -34,13 +34,13 @@ export const ItemBasicInfoFragment = gql(`
     relativePath
     groupId
   }
-`);
+`;
 
-export const ItemWithDetailsFragment = gql(`
+export const ItemWithDetailsFragment = gql`
   fragment ItemWithDetails on Item {
     ...ItemBasicInfo
     crc32
     downloadLink
     error
   }
-`);
+`;
