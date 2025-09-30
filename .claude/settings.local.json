@@ -20,7 +20,8 @@
       "Bash(cat:*)",
       "Bash(npm -w backend run build)",
       "Bash(npm -w backend run test)",
-      "Bash(npm run lint)"
+      "Bash(npm run lint)",
+      "Bash(npm -w backend run test -- --testPathPattern=download-manager.service.spec.ts)"
     ],
     "deny": [],
     "ask": []

@@ -202,6 +202,14 @@ export class DownloadManagerService {
     );
     await this.itemsRepo.addMany(uniqueItems);
 
+    // Mark group as ready for download immediately to avoid race conditions
+    // Use setImmediate to ensure this happens after the current call stack
+    setImmediate(() => {
+      this.updateGroupState(group.id, GroupState.Ready).catch((error) => {
+        this.logger.error(`Failed to set group ${group.id} to Ready state:`, error);
+      });
+    });
+
     // Asynchronously check if items already exist on disk and verify their integrity
     const analysisCompletedPromise = new Promise<void>((resolve, reject) => {
       this.checkGroupItemsOnDisk(group.id)
@@ -225,9 +233,6 @@ export class DownloadManagerService {
             });
         });
     });
-
-    // Mark group as ready for download
-    group.state = GroupState.Ready;
 
     return {
       success: true,
