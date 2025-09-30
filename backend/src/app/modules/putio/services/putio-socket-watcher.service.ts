@@ -68,6 +68,32 @@ export class PutioSocketWatcherService implements OnModuleInit {
   }
 
   /**
+   * Wait for a file to become available with exponential backoff
+   * Files may take some time to appear after transfer completion
+   */
+  private async waitForFile(itemId: number, maxAttempts = 10): Promise<any> {
+    const delays = [1000, 2000, 3000, 5000, 8000, 13000, 21000, 34000, 55000, 89000]; // Fibonacci-like backoff
+
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      const file = await this.putioService.getFile(itemId);
+      if (file) {
+        if (attempt > 0) {
+          this.logger.log(`File ${itemId} became available after ${attempt + 1} attempts`);
+        }
+        return file;
+      }
+
+      if (attempt < maxAttempts - 1) {
+        const delay = delays[attempt];
+        this.logger.debug(`File ${itemId} not yet available, waiting ${delay}ms before retry ${attempt + 1}/${maxAttempts}`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+
+    return null;
+  }
+
+  /**
    * A transfer was completed at put.io, process it and if it is relevant
    * send it to the download manager
    */
@@ -77,7 +103,13 @@ export class PutioSocketWatcherService implements OnModuleInit {
       // Nothing of interest
       return;
     }
-    const file = await this.putioService.getFile(itemId);
+
+    // Files may take some time to become available after transfer completion
+    const file = await this.waitForFile(itemId);
+    if (!file) {
+      this.logger.warn(`Transfer completed for file ${itemId}, but file could not be retrieved after multiple attempts`);
+      return;
+    }
     this.logger.log(`Transfer Completed (put.io) captured via socket - ${file.name}`);
     const vfs = await this.putioService.getVolume(itemId);
     if (!vfs) {

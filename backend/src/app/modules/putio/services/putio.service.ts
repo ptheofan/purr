@@ -61,7 +61,7 @@ export class PutioService {
     }
   }
 
-  async getFile(id: number): Promise<IFile> {
+  async getFile(id: number): Promise<IFile | null> {
     try {
       const api = await this.getApi();
       const files = await this.rateLimitSafeCall(async () => api.Files.Query(id));

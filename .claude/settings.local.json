@@ -12,7 +12,14 @@
       "Bash(test:*)",
       "Bash(chmod:*)",
       "Bash(npm run version:*)",
-      "Bash(./scripts/create-release.sh:*)"
+      "Bash(./scripts/create-release.sh:*)",
+      "Bash(npm -w backend run test -- --testPathPattern=putio-socket-watcher.service.spec.ts)",
+      "Bash(npm -w backend run test -- --testPathPattern=putio.service.spec.ts)",
+      "Bash(find:*)",
+      "WebFetch(domain:app.swaggerhub.com)",
+      "Bash(cat:*)",
+      "Bash(npm -w backend run build)",
+      "Bash(npm -w backend run test)"
     ],
     "deny": [],
     "ask": []
