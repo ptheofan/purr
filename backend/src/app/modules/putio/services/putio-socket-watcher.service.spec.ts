@@ -9,7 +9,6 @@ describe('PutioSocketWatcherService', () => {
   let service: PutioSocketWatcherService;
   let putioService: jest.Mocked<PutioService>;
   let downloadManagerService: jest.Mocked<DownloadManagerService>;
-  let configService: jest.Mocked<AppConfigService>;
 
   const mockFile: IFile = {
     id: 123,
@@ -60,7 +59,6 @@ describe('PutioSocketWatcherService', () => {
     service = module.get<PutioSocketWatcherService>(PutioSocketWatcherService);
     putioService = module.get(PutioService) as jest.Mocked<PutioService>;
     downloadManagerService = module.get(DownloadManagerService) as jest.Mocked<DownloadManagerService>;
-    configService = module.get(AppConfigService) as jest.Mocked<AppConfigService>;
   });
 
   describe('getTargetById', () => {

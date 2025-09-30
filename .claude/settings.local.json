@@ -19,7 +19,8 @@
       "WebFetch(domain:app.swaggerhub.com)",
       "Bash(cat:*)",
       "Bash(npm -w backend run build)",
-      "Bash(npm -w backend run test)"
+      "Bash(npm -w backend run test)",
+      "Bash(npm run lint)"
     ],
     "deny": [],
     "ask": []
